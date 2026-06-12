@@ -1,0 +1,1635 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <title>El Taller del Juguetero 3D | WebXR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    
+    <!-- CSS del Framework XR Blocks -->
+    <link type="text/css" rel="stylesheet" href="https://xrblocks.github.io/css/xr.css" />
+    <!-- Tailwind CSS para la UI de control del taller -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Vintage -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Iconos Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+      window.litDisableBundleWarning = true;
+    </script>
+    
+    <!-- Importmap con versiones de dependencia estrictas y de producción -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/",
+          "xrblocks": "https://cdn.jsdelivr.net/npm/xrblocks@0.16.0/build/xrblocks.js",
+          "xrblocks/addons/": "https://cdn.jsdelivr.net/npm/xrblocks@0.16.0/build/addons/"
+        }
+      }
+    </script>
+    
+    <style>
+      body {
+        font-family: 'Quicksand', sans-serif;
+        background-color: #0f0a06;
+        overflow: hidden;
+      }
+      h1, h2 {
+        font-family: 'Cinzel', serif;
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(15, 10, 6, 0.5);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(217, 119, 6, 0.4);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(217, 119, 6, 0.6);
+      }
+    </style>
+  </head>
+
+  <body class="relative w-full h-screen text-amber-100 select-none">
+    
+    <!-- Capa de Interfaz de Usuario Desktop Overlay -->
+    <div class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 md:p-6 z-10">
+        
+        <!-- Cabecera / Título -->
+        <header class="flex justify-between items-start pointer-events-auto w-full max-w-xl bg-black/70 backdrop-blur-md border border-amber-900/40 p-4 rounded-2xl shadow-2xl transition-all duration-500">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold text-amber-400 flex items-center gap-2">
+                    <i data-lucide="sparkles" class="text-amber-400 fill-amber-400/20 animate-pulse"></i> Taller del Juguetero
+                </h1>
+                <p class="text-xs text-amber-200/80 mt-1">
+                    Explora el taller cerrado de estilo low-poly. La cámara está situada a 1.65m para darte una perspectiva realista en primera persona. ¡Coloca el barco en el pedestal para viajar!
+                </p>
+            </div>
+            <button id="btn-music" class="p-2.5 bg-amber-900/30 hover:bg-amber-900/60 border border-amber-500/30 text-amber-300 rounded-xl transition duration-300 flex items-center justify-center gap-1.5" title="Melodía del Taller">
+                <i id="music-icon" data-lucide="music" class="w-5 h-5"></i>
+                <span id="music-badge" class="hidden w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+            </button>
+        </header>
+
+        <!-- Centro: Indicador visual de arrastre o ayuda -->
+        <div class="hidden sm:flex justify-center items-center opacity-70 transition-opacity duration-500">
+            <span class="bg-black/60 px-4 py-2 rounded-full text-xs border border-amber-500/30 text-amber-300 flex items-center gap-2 shadow-lg">
+                <i data-lucide="move" class="w-4 h-4 text-amber-400"></i> Click izquierdo para arrastrar juguetes • Suéltalos en el pedestal central • Suelta el avión en el aire para que vuele.
+            </span>
+        </div>
+
+        <!-- Panel de Control Inferior -->
+        <footer class="w-full flex flex-col md:flex-row justify-between gap-4 items-stretch md:items-end pointer-events-auto transition-all duration-500">
+            
+            <!-- Selector de Juguetes a Crear -->
+            <div class="bg-black/60 backdrop-blur-md border border-amber-900/40 p-4 rounded-2xl shadow-2xl flex-1 max-w-md">
+                <h2 class="text-sm font-semibold text-amber-300 mb-3 flex items-center gap-1.5 border-b border-amber-900/30 pb-1.5 font-bold uppercase tracking-wider">
+                    <i data-lucide="hammer" class="w-4 h-4 text-amber-400 animate-bounce"></i> Fabricar tus Juguetes (GLB)
+                </h2>
+                <div class="grid grid-cols-4 gap-2">
+                    <button id="btn-spawn-train" data-toy-btn="train" disabled class="flex flex-col items-center justify-center p-2 bg-amber-950/20 opacity-40 border border-amber-700/20 rounded-xl transition group duration-300">
+                        <i data-lucide="train" class="w-6 h-6 text-amber-500 group-hover:scale-110 transition duration-300"></i>
+                        <span class="text-[10px] mt-1 text-amber-200/90 font-medium">Tren</span>
+                    </button>
+                    <button id="btn-spawn-plane" data-toy-btn="plane" disabled class="flex flex-col items-center justify-center p-2 bg-amber-950/20 opacity-40 border border-amber-700/20 rounded-xl transition group duration-300">
+                        <i data-lucide="plane" class="w-6 h-6 text-amber-500 group-hover:scale-110 transition duration-300"></i>
+                        <span class="text-[10px] mt-1 text-amber-200/90 font-medium">Avión</span>
+                    </button>
+                    <button id="btn-spawn-boat" data-toy-btn="boat" disabled class="flex flex-col items-center justify-center p-2 bg-amber-950/20 opacity-40 border border-amber-700/20 rounded-xl transition group duration-300">
+                        <i data-lucide="ship" class="w-6 h-6 text-amber-500 group-hover:scale-110 transition duration-300"></i>
+                        <span class="text-[10px] mt-1 text-amber-200/90 font-medium">Barco</span>
+                    </button>
+                    <button id="btn-spawn-truck" data-toy-btn="truck" disabled class="flex flex-col items-center justify-center p-2 bg-amber-950/20 opacity-40 border border-amber-700/20 rounded-xl transition group duration-300">
+                        <i data-lucide="truck" class="w-6 h-6 text-amber-500 group-hover:scale-110 transition duration-300"></i>
+                        <span class="text-[10px] mt-1 text-amber-200/90 font-medium">Camión</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Panel de Control de Iluminación Cálida -->
+            <div class="bg-black/60 backdrop-blur-md border border-amber-900/40 p-4 rounded-2xl shadow-2xl w-full md:w-80">
+                <h2 class="text-sm font-semibold text-amber-300 mb-3 flex items-center gap-1.5 border-b border-amber-900/30 pb-1.5">
+                    <i data-lucide="sun-medium" class="w-4 h-4"></i> Iluminación del Taller (Cálida)
+                </h2>
+                
+                <div class="space-y-3.5">
+                    <!-- Temperatura/Calidez -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-amber-200/90">Calidez del Taller (Color)</span>
+                            <span id="txt-warmth" class="text-amber-400 font-semibold">Máxima (Cobre)</span>
+                        </div>
+                        <input id="slider-warmth" type="range" min="0" max="100" value="85" 
+                               class="w-full accent-amber-500 h-1 bg-amber-950 rounded-lg cursor-pointer">
+                    </div>
+
+                    <!-- Intensidad de la Lámpara -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-amber-200/90">Lámpara del Escritorio</span>
+                            <span id="txt-lamp" class="text-amber-400 font-semibold">120%</span>
+                        </div>
+                        <input id="slider-lamp" type="range" min="0" max="200" value="120" 
+                               class="w-full accent-amber-500 h-1 bg-amber-950 rounded-lg cursor-pointer">
+                    </div>
+
+                    <!-- Botones Rápidos y Limpieza -->
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <button id="btn-candle" class="py-1.5 px-2 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-600/40 hover:border-amber-500 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                            <i data-lucide="flame" class="w-3.5 h-3.5 text-orange-500 fill-orange-500"></i> Vela: Encendida
+                        </button>
+                        <button id="btn-clear" class="py-1.5 px-2 bg-red-950/40 hover:bg-red-900/60 border border-red-900/40 hover:border-red-500/50 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 text-red-300 transition">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Despejar Mesa
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </footer>
+    </div>
+
+    <!-- Capa de Transición de Viaje -->
+    <div id="transition-overlay" class="fixed inset-0 bg-black flex flex-col items-center justify-center z-50 transition-opacity duration-1000 opacity-0 pointer-events-none">
+        <div class="text-center">
+            <i data-lucide="anchor" class="w-16 h-16 text-amber-400 mx-auto mb-4 animate-[bounce_2s_infinite]"></i>
+            <h2 class="text-3xl font-bold text-amber-300 font-serif tracking-widest uppercase" id="transition-title">¡Iniciando viaje!</h2>
+            <p id="transition-status" class="text-sm text-amber-100/70 mt-2">Levantando anclas, encendiendo luces de cubierta...</p>
+            <div class="mt-6 w-48 h-1 bg-amber-950/80 rounded-full mx-auto overflow-hidden">
+                <div class="h-full bg-amber-500 animate-[pulse_1.5s_infinite] w-full"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botón Flotante para Regresar al Taller (Actúa como respaldo secundario) -->
+    <button id="btn-back-taller" class="hidden fixed top-6 right-6 z-20 p-3 bg-amber-950/90 hover:bg-amber-900 border border-amber-500/50 text-amber-300 rounded-xl transition duration-300 shadow-2xl flex items-center gap-2 pointer-events-auto">
+        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        <span class="font-bold text-xs uppercase tracking-wider">Regresar al Taller</span>
+    </button>
+
+    <!-- Script de lógica de la aplicación -->
+    <script type="module">
+        import * as THREE from 'three';
+        import * as xb from 'xrblocks';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // Inicializar iconos de Lucide
+        lucide.createIcons();
+
+        // Modelos de GitHub del usuario
+        const modelUrls = {
+            escritorio: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1escritorio.glb",
+            train: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1tren.glb",
+            plane: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1avion.glb",
+            boat: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1barco.glb",
+            truck: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1camion.glb",
+            viajeEscena: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/main/barco-scene.glb",
+            palanca: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/main/palanca.glb"
+        };
+
+        const toyTemplates = {
+            train: null,
+            plane: null,
+            boat: null,
+            truck: null
+        };
+
+        const woodMaterials = {
+            natural: new THREE.MeshStandardMaterial({ color: 0xb58a5f, roughness: 0.6 }),
+            dark: new THREE.MeshStandardMaterial({ color: 0x3e2723, roughness: 0.7 })
+        };
+
+        class ToyWorkshopScript extends xb.Script {
+            constructor() {
+                super();
+                this.objects = [];
+                this.planeThreads = new Map();
+                this.candleTime = 0;
+                this.selectedObject = null;
+                this.offset = new THREE.Vector3();
+                this.dragPlane = new THREE.Plane();
+                this.intersectionPoint = new THREE.Vector3();
+                this.raycaster = new THREE.Raycaster();
+                this.mouse = new THREE.Vector2();
+                
+                // Grupos para administrar escenas
+                this.tallerGroup = new THREE.Group();
+                this.viajeGroup = new THREE.Group();
+                this.currentSceneState = 'taller'; // 'taller' | 'viaje'
+                this.transitionTriggered = false;
+
+                // Animaciones y modelo de palanca
+                this.leverModel = null;
+                this.leverHandle = null; // El nodo rotatorio de la palanca
+                this.leverTargetRotation = 0;
+                this.leverCurrentRotation = 0;
+
+                // Variables de Audio
+                this.audioCtx = null;
+                this.isMusicPlaying = false;
+                this.musicTimer = null;
+                this.musicNextNoteTime = 0;
+                this.melodyStep = 0;
+
+                // Melodía clásica de Cajita de Música
+                this.musicBoxMelody = [
+                    { note: 523.25, duration: 0.4 }, { note: 587.33, duration: 0.4 }, { note: 659.25, duration: 0.4 }, { note: 523.25, duration: 0.4 },
+                    { note: 523.25, duration: 0.4 }, { note: 587.33, duration: 0.4 }, { note: 659.25, duration: 0.4 }, { note: 523.25, duration: 0.4 },
+                    { note: 659.25, duration: 0.4 }, { note: 698.46, duration: 0.4 }, { note: 783.99, duration: 0.8 },
+                    { note: 659.25, duration: 0.4 }, { note: 698.46, duration: 0.4 }, { note: 783.99, duration: 0.8 },
+                    { note: 783.99, duration: 0.3 }, { note: 880.00, duration: 0.3 }, { note: 783.99, duration: 0.3 }, { note: 698.46, duration: 0.3 },
+                    { note: 659.25, duration: 0.4 }, { note: 523.25, duration: 0.4 }
+                ];
+            }
+
+            init() {
+                // Niebla y fondo marrón muy cálido
+                xb.core.scene.background = new THREE.Color(0x0e0804);
+                xb.core.scene.fog = new THREE.FogExp2(0x0e0804, 0.04);
+                
+                // Posicionar cámara a 1.65 metros de altura realista
+                xb.core.camera.position.set(0, 1.65, 2.3);
+
+                // Añadir grupos a la escena
+                this.add(this.tallerGroup);
+                this.add(this.viajeGroup);
+                this.viajeGroup.visible = false;
+
+                this.setupLighting();
+                this.createLowPolyRoom();      
+                this.createPedestalPlatform();  
+                this.createWorkshopTable();
+                this.createWorkshopScenery();
+                this.createDustMotes();
+                this.loadToyTemplates();
+                this.setupUIHandlers();
+
+                // Listeners de arrastre para web/desktop
+                window.addEventListener('pointerdown', (e) => this.onPointerDown(e), false);
+                window.addEventListener('pointermove', (e) => this.onPointerMove(e), false);
+                window.addEventListener('pointerup', (e) => this.onPointerUp(e), false);
+            }
+
+            setupLighting() {
+                // Luz de ambiente íntima
+                this.ambientLight = new THREE.AmbientLight(0x3d2110, 0.45);
+                this.tallerGroup.add(this.ambientLight);
+
+                // Luz azulada de luna que entra por la ventana lateral izquierda
+                this.windowLight = new THREE.DirectionalLight(0x42638f, 1.2);
+                this.windowLight.position.set(-6, 8, -4);
+                this.windowLight.castShadow = true;
+                this.windowLight.shadow.mapSize.width = 1024;
+                this.windowLight.shadow.mapSize.height = 1024;
+                this.tallerGroup.add(this.windowLight);
+
+                // Lámpara de escritorio dorada ajustable
+                this.lampLight = new THREE.PointLight(0xff9421, 2.2, 12);
+                this.lampLight.position.set(-0.6, 1.7, -0.6); 
+                this.lampLight.castShadow = true;
+                this.lampLight.shadow.bias = -0.002;
+                this.tallerGroup.add(this.lampLight);
+
+                // Vela cálida de mesa
+                this.candleLight = new THREE.PointLight(0xff5500, 1.3, 6);
+                this.candleLight.position.set(0.5, 1.25, -0.3);
+                this.candleLight.castShadow = true;
+                this.tallerGroup.add(this.candleLight);
+
+                // --- Luces de la Escena de Viaje ---
+                this.viajeLightAmbient = new THREE.AmbientLight(0x132238, 0.5); // Azul profundo marino
+                this.viajeLightSun = new THREE.DirectionalLight(0x5588aa, 0.9); // Luz de luna marítima
+                this.viajeLightSun.position.set(-5, 12, 5);
+                this.viajeLightSun.castShadow = true;
+                this.viajeGroup.add(this.viajeLightAmbient, this.viajeLightSun);
+
+                // Luz cálida de farol / camarote (fijada en el centro del barco)
+                this.boatCabinLight = new THREE.PointLight(0xff9933, 2.5, 6.0);
+                this.boatCabinLight.position.set(0, 1.2, 0.0);
+                this.boatCabinLight.castShadow = true;
+                this.viajeGroup.add(this.boatCabinLight);
+            }
+
+            // CREACIÓN DE LA HABITACIÓN CERRADA LOW-POLY
+            createLowPolyRoom() {
+                const roomGroup = new THREE.Group();
+
+                const floorMat = new THREE.MeshStandardMaterial({ color: 0x1f140e, roughness: 0.9 });
+                const wallMatLeftRight = new THREE.MeshStandardMaterial({ color: 0x1c120c, roughness: 0.95 });
+                const wallMatBack = new THREE.MeshStandardMaterial({ color: 0x18100a, roughness: 0.95 });
+                const wallMatCeiling = new THREE.MeshStandardMaterial({ color: 0x120a06, roughness: 0.95 });
+                const woodBeamMat = new THREE.MeshStandardMaterial({ color: 0x2e180d, roughness: 0.8 });
+                const frameMat = new THREE.MeshStandardMaterial({ color: 0x3d2518, roughness: 0.75 });
+                const glassMat = new THREE.MeshBasicMaterial({ color: 0x224466, transparent: true, opacity: 0.8 });
+
+                const width = 4;
+                const height = 4;
+                const length = 4.5;
+
+                // 1. Piso de tablones de madera
+                const numPlanks = 14;
+                const plankWidth = width / numPlanks;
+                for (let i = 0; i < numPlanks; i++) {
+                    const variation = (Math.random() - 0.5) * 0.05;
+                    const plankCol = new THREE.Color(0x1f140e).multiplyScalar(1 + variation);
+                    const plankMat = new THREE.MeshStandardMaterial({ color: plankCol, roughness: 0.9 });
+                    
+                    const plank = new THREE.Mesh(
+                        new THREE.BoxGeometry(plankWidth - 0.008, 0.02, length),
+                        plankMat
+                    );
+                    plank.position.set(-width / 2 + plankWidth / 2 + i * plankWidth, 0, -1);
+                    plank.receiveShadow = true;
+                    roomGroup.add(plank);
+                }
+
+                // 2. Techo cerrado
+                const ceiling = new THREE.Mesh(new THREE.BoxGeometry(width, 0.1, length), wallMatCeiling);
+                ceiling.position.set(0, height, -1);
+                roomGroup.add(ceiling);
+
+                // 3. Paredes de la habitación
+                const backWall = new THREE.Mesh(new THREE.BoxGeometry(width, height, 0.1), wallMatBack);
+                backWall.position.set(0, height / 2, -1 - length / 2);
+                backWall.receiveShadow = true;
+                roomGroup.add(backWall);
+
+                const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, height, length), wallMatLeftRight);
+                leftWall.position.set(-width / 2, height / 2, -1);
+                leftWall.receiveShadow = true;
+                roomGroup.add(leftWall);
+
+                const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, height, length), wallMatLeftRight);
+                rightWall.position.set(width / 2, height / 2, -1);
+                rightWall.receiveShadow = true;
+                roomGroup.add(rightWall);
+
+                const frontWall = new THREE.Mesh(new THREE.BoxGeometry(width, height, 0.1), wallMatLeftRight);
+                frontWall.position.set(0, height / 2, -1 + length / 2);
+                frontWall.receiveShadow = true;
+                roomGroup.add(frontWall);
+
+                // 4. Vigas de Soporte
+                const beamThickness = 0.15;
+                const corners = [
+                    [-width / 2 + beamThickness / 2, -1 - length / 2 + beamThickness / 2],
+                    [width / 2 - beamThickness / 2, -1 - length / 2 + beamThickness / 2],
+                    [-width / 2 + beamThickness / 2, -1 + length / 2 - beamThickness / 2],
+                    [width / 2 - beamThickness / 2, -1 + length / 2 - beamThickness / 2]
+                ];
+                corners.forEach(pos => {
+                    const beam = new THREE.Mesh(new THREE.BoxGeometry(beamThickness, height, beamThickness), woodBeamMat);
+                    beam.position.set(pos[0], height / 2, pos[1]);
+                    beam.castShadow = true;
+                    beam.receiveShadow = true;
+                    roomGroup.add(beam);
+                });
+
+                const beamTopBack = new THREE.Mesh(new THREE.BoxGeometry(width, beamThickness, beamThickness), woodBeamMat);
+                beamTopBack.position.set(0, height - beamThickness / 2, -1 - length / 2 + beamThickness / 2);
+                roomGroup.add(beamTopBack);
+
+                const beamTopLeft = new THREE.Mesh(new THREE.BoxGeometry(beamThickness, beamThickness, length), woodBeamMat);
+                beamTopLeft.position.set(-width / 2 + beamThickness / 2, height - beamThickness / 2, -1);
+                roomGroup.add(beamTopLeft);
+
+                const beamTopRight = new THREE.Mesh(new THREE.BoxGeometry(beamThickness, beamThickness, length), woodBeamMat);
+                beamTopRight.position.set(width / 2 - beamThickness / 2, height - beamThickness / 2, -1);
+                roomGroup.add(beamTopRight);
+
+                // 5. Ventana arqueada
+                const windowGroup = new THREE.Group();
+                windowGroup.position.set(-width / 2 + 0.06, 2.2, -1);
+                windowGroup.rotation.y = Math.PI / 2;
+
+                const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.4), glassMat);
+                windowGroup.add(glass);
+
+                const frameLeft = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.4, 0.06), frameMat);
+                frameLeft.position.set(-0.5, 0, 0);
+                const frameRight = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.4, 0.06), frameMat);
+                frameRight.position.set(0.5, 0, 0);
+                const frameTop = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.06, 0.06), frameMat);
+                frameTop.position.set(0, 0.7, 0);
+                const frameBottom = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.06, 0.06), frameMat);
+                frameBottom.position.set(0, -0.7, 0);
+                const frameMid = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.4, 0.04), frameMat);
+
+                windowGroup.add(frameLeft, frameRight, frameTop, frameBottom, frameMid);
+                roomGroup.add(windowGroup);
+
+                // 6. Mobiliario Decorativo (Barril y cajas de madera)
+                const barrel = new THREE.Group();
+                barrel.position.set(1.4, 0.45, -2.6);
+                const barrelMat = new THREE.MeshStandardMaterial({ color: 0x3d2518, roughness: 0.8 });
+                const metalRingMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8, roughness: 0.3 });
+                
+                const body = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.9, 10), barrelMat);
+                body.castShadow = true; body.receiveShadow = true;
+                barrel.add(body);
+
+                const ring1 = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.03, 10, 1, true), metalRingMat);
+                ring1.position.y = 0.3;
+                const ring2 = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.03, 10, 1, true), metalRingMat);
+                ring2.position.y = 0;
+                const ring3 = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.03, 10, 1, true), metalRingMat);
+                ring3.position.y = -0.3;
+                barrel.add(ring1, ring2, ring3);
+                roomGroup.add(barrel);
+
+                const crateMat = new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.9 });
+                const crate1 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), crateMat);
+                crate1.position.set(1.3, 0.2, -2.0);
+                crate1.rotation.y = 0.2;
+                crate1.castShadow = true; crate1.receiveShadow = true;
+
+                const crate2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), crateMat);
+                crate2.position.set(1.35, 0.55, -2.05);
+                crate2.rotation.y = -0.15;
+                crate2.castShadow = true; crate2.receiveShadow = true;
+
+                roomGroup.add(crate1, crate2);
+
+                const stool = new THREE.Group();
+                stool.position.set(0, 0, -0.2);
+                const stoolSeat = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.03, 8), woodBeamMat);
+                stoolSeat.position.y = 0.45;
+                stoolSeat.castShadow = true; stoolSeat.receiveShadow = true;
+                stool.add(stoolSeat);
+
+                const legGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.45, 6);
+                for (let i = 0; i < 3; i++) {
+                    const angle = (i * Math.PI * 2) / 3;
+                    const leg = new THREE.Mesh(legGeo, woodBeamMat);
+                    leg.position.set(Math.cos(angle) * 0.1, 0.225, Math.sin(angle) * 0.1);
+                    leg.rotation.z = Math.sin(angle) * 0.15;
+                    leg.rotation.x = Math.cos(angle) * 0.15;
+                    leg.castShadow = true;
+                    stool.add(leg);
+                }
+                roomGroup.add(stool);
+
+                this.tallerGroup.add(roomGroup);
+            }
+
+            // CREACIÓN DEL PEDESTAL DE EXPOSICIÓN (20cm x 20cm x 4cm de alto con borde metálico dorado)
+            createPedestalPlatform() {
+                this.pedestalGroup = new THREE.Group();
+                this.pedestalGroup.position.set(0, 0.9 + 0.02, -0.5);
+
+                const woodGeo = new THREE.BoxGeometry(0.192, 0.038, 0.192);
+                this.pedestalWoodMat = new THREE.MeshStandardMaterial({
+                    color: 0x4a2a18,
+                    roughness: 0.7,
+                    metalness: 0.1
+                });
+                const woodBlock = new THREE.Mesh(woodGeo, this.pedestalWoodMat);
+                woodBlock.castShadow = true;
+                woodBlock.receiveShadow = true;
+                this.pedestalGroup.add(woodBlock);
+
+                this.pedestalMetalMat = new THREE.MeshStandardMaterial({
+                    color: 0xd4af37,
+                    metalness: 0.9,
+                    roughness: 0.15,
+                    emissive: new THREE.Color(0x000000)
+                });
+
+                const thickness = 0.008;
+                const wallLength = 0.2;
+                const wallHeight = 0.04;
+
+                const borderGeoX = new THREE.BoxGeometry(wallLength, wallHeight, thickness);
+                const borderGeoZ = new THREE.BoxGeometry(thickness, wallHeight, wallLength);
+
+                const borderF = new THREE.Mesh(borderGeoX, this.pedestalMetalMat);
+                borderF.position.set(0, 0, wallLength / 2 - thickness / 2);
+                
+                const borderB = new THREE.Mesh(borderGeoX, this.pedestalMetalMat);
+                borderB.position.set(0, 0, -(wallLength / 2 - thickness / 2));
+
+                const borderL = new THREE.Mesh(borderGeoZ, this.pedestalMetalMat);
+                borderL.position.set(-(wallLength / 2 - thickness / 2), 0, 0);
+
+                const borderR = new THREE.Mesh(borderGeoZ, this.pedestalMetalMat);
+                borderR.position.set(wallLength / 2 - thickness / 2, 0, 0);
+
+                const cornerGeo = new THREE.BoxGeometry(thickness * 1.5, wallHeight + 0.002, thickness * 1.5);
+                const corners = [
+                    [-0.1, 0.1], [0.1, 0.1], [-0.1, -0.1], [0.1, -0.1]
+                ];
+                corners.forEach(pos => {
+                    const cornerMesh = new THREE.Mesh(cornerGeo, this.pedestalMetalMat);
+                    cornerMesh.position.set(pos[0], 0, pos[1]);
+                    cornerMesh.castShadow = true;
+                    this.pedestalGroup.add(cornerMesh);
+                });
+
+                borderF.castShadow = true; borderB.castShadow = true;
+                borderL.castShadow = true; borderR.castShadow = true;
+
+                this.pedestalGroup.add(borderF, borderB, borderL, borderR);
+                this.tallerGroup.add(this.pedestalGroup);
+            }
+
+            createWorkshopTable() {
+                const loader = new GLTFLoader();
+                loader.load(modelUrls.escritorio, (gltf) => {
+                    const desk = gltf.scene;
+                    desk.traverse(child => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+
+                    const box = new THREE.Box3().setFromObject(desk);
+                    const size = box.getSize(new THREE.Vector3());
+                    const scaleFactor = 0.9 / size.y;
+                    desk.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+                    const updatedBox = new THREE.Box3().setFromObject(desk);
+                    const min = updatedBox.min;
+                    const center = updatedBox.getCenter(new THREE.Vector3());
+                    desk.position.set(-center.x, -min.y, -center.z - 0.5); 
+                    desk.rotation.y = Math.PI;
+
+                    this.tallerGroup.add(desk);
+                }, undefined, (err) => {
+                    console.warn("Fallo cargando escritorio original, cargando respaldo...", err);
+                    this.createFallbackDesk();
+                });
+
+                this.tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.9);
+            }
+
+            createFallbackDesk() {
+                const fallbackDesk = new THREE.Group();
+                const woodMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.7 });
+                const legMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.5 });
+
+                const top = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.06, 1.1), woodMat);
+                top.position.set(0, 0.87, -0.5); 
+                top.castShadow = true;
+                top.receiveShadow = true;
+                fallbackDesk.add(top);
+
+                const legGeo = new THREE.BoxGeometry(0.06, 0.84, 0.06);
+                const positions = [
+                    [-1.0, 0.42, -0.45 - 0.5], [1.0, 0.42, -0.45 - 0.5],
+                    [-1.0, 0.42, 0.45 - 0.5], [1.0, 0.42, 0.45 - 0.5]
+                ];
+                positions.forEach(pos => {
+                    const leg = new THREE.Mesh(legGeo, legMat);
+                    leg.position.set(pos[0], pos[1], pos[2]);
+                    leg.castShadow = true;
+                    fallbackDesk.add(leg);
+                });
+
+                fallbackDesk.rotation.y = Math.PI;
+                this.tallerGroup.add(fallbackDesk);
+            }
+
+            createWorkshopScenery() {
+                // --- LÁMPARA VINTAGE DE LATÓN ---
+                const lampGroup = new THREE.Group();
+                lampGroup.position.set(-0.6, 0.9, -0.6); 
+
+                const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3, metalness: 0.8 });
+                
+                const base = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.02, 16), brassMat);
+                base.position.y = 0.01;
+                lampGroup.add(base);
+
+                const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.8, 12), brassMat);
+                arm.position.set(-0.08, 0.4, 0);
+                arm.rotation.z = -0.15;
+                lampGroup.add(arm);
+
+                const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.16, 0.15, 16, 1, true), brassMat);
+                shade.position.set(0, 0.8, 0);
+                shade.rotation.z = 0.25;
+                lampGroup.add(shade);
+
+                const bulbGeo = new THREE.SphereGeometry(0.04, 16, 16);
+                const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffe2ad });
+                this.lampBulbGlow = new THREE.Mesh(bulbGeo, bulbMat);
+                this.lampBulbGlow.position.set(0.02, 0.75, 0);
+                lampGroup.add(this.lampBulbGlow);
+
+                base.castShadow = true; arm.castShadow = true; shade.castShadow = true;
+                this.tallerGroup.add(lampGroup);
+
+                // --- PALMATORIA CON VELA CÁLIDA ---
+                const candleGroup = new THREE.Group();
+                candleGroup.position.set(0.5, 0.9, -0.3); 
+
+                const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.015, 16), new THREE.MeshStandardMaterial({ color: 0x22252a, roughness: 0.6 }));
+                dish.position.y = 0.007;
+                candleGroup.add(dish);
+
+                const wax = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.25, 12), new THREE.MeshStandardMaterial({ color: 0xf5f5dc, roughness: 0.8 }));
+                wax.position.y = 0.13;
+                wax.castShadow = true;
+                candleGroup.add(wax);
+
+                const flameGeo = new THREE.ConeGeometry(0.015, 0.05, 8);
+                const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa500 });
+                this.candleFlame = new THREE.Mesh(flameGeo, flameMat);
+                this.candleFlame.name = "candleFlame";
+                this.candleFlame.position.y = 0.28;
+                candleGroup.add(this.candleFlame);
+
+                this.tallerGroup.add(candleGroup);
+
+                // --- ESTANTE DE PARED RÚSTICO ---
+                const shelfGroup = new THREE.Group();
+                const shelfMesh = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.04, 0.28), new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.85 }));
+                shelfMesh.position.set(0, 1.43, -1.65); 
+                shelfMesh.castShadow = true;
+                shelfMesh.receiveShadow = true;
+                shelfGroup.add(shelfMesh);
+
+                const leftBracket = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.2), brassMat);
+                leftBracket.position.set(-0.6, 1.34, -1.7);
+                leftBracket.castShadow = true;
+                shelfGroup.add(leftBracket);
+
+                const rightBracket = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.2), brassMat);
+                rightBracket.position.set(0.6, 1.34, -1.7);
+                rightBracket.castShadow = true;
+                shelfGroup.add(rightBracket);
+
+                this.tallerGroup.add(shelfGroup);
+            }
+
+            createDustMotes() {
+                const particleCount = 120;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const speeds = [];
+
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 8;
+                    positions[i * 3 + 1] = Math.random() * 3 + 0.9;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 5;
+
+                    speeds.push({
+                        x: (Math.random() - 0.5) * 0.003,
+                        y: (Math.random() * 0.002) + 0.001,
+                        z: (Math.random() - 0.5) * 0.003,
+                        phase: Math.random() * Math.PI * 2
+                    });
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const material = new THREE.PointsMaterial({
+                    color: 0xffe5b4,
+                    size: 0.04,
+                    transparent: true,
+                    opacity: 0.65,
+                    blending: THREE.AdditiveBlending
+                });
+
+                this.dustParticles = new THREE.Points(geometry, material);
+                this.dustParticles.userData = { speeds: speeds };
+                this.tallerGroup.add(this.dustParticles);
+            }
+
+            loadToyTemplates() {
+                const loader = new GLTFLoader();
+                const toysToLoad = [
+                    { type: 'train', url: modelUrls.train, size: 0.22 },
+                    { type: 'plane', url: modelUrls.plane, size: 0.22 },
+                    { type: 'boat', url: modelUrls.boat, size: 0.18 },
+                    { type: 'truck', url: modelUrls.truck, size: 0.24 }
+                ];
+
+                toysToLoad.forEach(toy => {
+                    loader.load(toy.url, (gltf) => {
+                        const sceneGroup = gltf.scene;
+                        sceneGroup.traverse(child => {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                            }
+                        });
+
+                        const box = new THREE.Box3().setFromObject(sceneGroup);
+                        const size = box.getSize(new THREE.Vector3());
+                        const maxDim = Math.max(size.x, size.y, size.z);
+                        const scaleFactor = toy.size / maxDim;
+                        sceneGroup.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+                        const updatedBox = new THREE.Box3().setFromObject(sceneGroup);
+                        const localMinY = updatedBox.min.y;
+
+                        const wrapper = new THREE.Group();
+                        sceneGroup.position.set(
+                            -updatedBox.getCenter(new THREE.Vector3()).x * scaleFactor,
+                            -localMinY,
+                            -updatedBox.getCenter(new THREE.Vector3()).z * scaleFactor
+                        );
+                        wrapper.add(sceneGroup);
+                        toyTemplates[toy.type] = wrapper;
+
+                        const btn = document.querySelector(`[data-toy-btn="${toy.type}"]`);
+                        if (btn) {
+                            btn.removeAttribute('disabled');
+                            btn.classList.remove('opacity-40');
+                            btn.classList.add('hover:bg-amber-800/40', 'hover:border-amber-500/50', 'bg-amber-950/40');
+                        }
+
+                        this.checkAllTemplatesLoaded();
+                    }, undefined, (err) => {
+                        console.warn(`Error al cargar ${toy.type}, usando respaldo procedural.`, err);
+                        this.createFallbackTemplate(toy.type);
+                    });
+                });
+            }
+
+            createFallbackTemplate(type) {
+                const group = new THREE.Group();
+                let mesh;
+                if (type === 'train') {
+                    mesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.08), woodMaterials.natural);
+                } else if (type === 'plane') {
+                    mesh = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 12), woodMaterials.natural);
+                    mesh.rotation.x = Math.PI / 2;
+                } else if (type === 'boat') {
+                    mesh = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.05, 0.07), woodMaterials.natural);
+                } else {
+                    mesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.06, 0.09), woodMaterials.natural);
+                }
+                mesh.position.y = 0.04;
+                group.add(mesh);
+                toyTemplates[type] = group;
+
+                const btn = document.querySelector(`[data-toy-btn="${type}"]`);
+                if (btn) {
+                    btn.removeAttribute('disabled');
+                    btn.classList.remove('opacity-40');
+                    btn.classList.add('hover:bg-amber-800/40', 'hover:border-amber-500/50', 'bg-amber-950/40');
+                }
+                this.checkAllTemplatesLoaded();
+            }
+
+            checkAllTemplatesLoaded() {
+                const allLoaded = Object.values(toyTemplates).every(t => t !== null);
+                if (allLoaded && this.objects.length === 0) {
+                    this.spawnInitialToys();
+                }
+            }
+
+            spawnToy(type, customX, customZ, customY) {
+                const template = toyTemplates[type];
+                if (!template) return;
+
+                const newToy = template.clone();
+                newToy.userData = {
+                    type: type,
+                    isFlying: false,
+                    flightAngle: Math.random() * Math.PI * 2,
+                    uuid: THREE.MathUtils.generateUUID()
+                };
+
+                let x = customX !== undefined ? customX : (Math.random() - 0.5) * 1.0;
+                let z = customZ !== undefined ? customZ : -0.5 + (Math.random() - 0.5) * 0.5;
+                let y = customY !== undefined ? customY : 0.9;
+
+                if (type === 'plane' && customY === undefined) {
+                    y = 1.8;
+                    newToy.userData.isFlying = true;
+                }
+
+                newToy.position.set(x, y, z);
+                newToy.rotation.y = Math.random() * Math.PI * 2;
+
+                this.tallerGroup.add(newToy);
+                this.objects.push(newToy);
+
+                if (newToy.userData.isFlying) {
+                    this.playSparkleSound();
+                } else {
+                    this.playClinkSound();
+                }
+            }
+
+            spawnInitialToys() {
+                this.spawnToy('train', 0, -0.5, 0.94);
+                this.spawnToy('truck', -0.4, -0.3, 0.9);
+                this.spawnToy('boat', 0.2, -1.65, 1.45); 
+                this.spawnToy('plane', 0, -0.5, 1.8);    
+            }
+
+            clearToys() {
+                this.objects.forEach(obj => {
+                    this.tallerGroup.remove(obj);
+                    const thread = this.planeThreads.get(obj.userData.uuid);
+                    if (thread) this.tallerGroup.remove(thread);
+                });
+                this.objects = [];
+                this.planeThreads.clear();
+                this.playSweepSound();
+            }
+
+            // --- FÍSICA E INTERACCIÓN DE ARRASTRE DE JUGUETES Y PALANCA ---
+            onPointerDown(event) {
+                if (event.button !== 0 && event.pointerType === 'mouse') return;
+
+                this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+                this.raycaster.setFromCamera(this.mouse, xb.core.camera);
+
+                // Lógica de Raycasting en el Modo de Viaje (Detectar clic en la Palanca)
+                if (this.currentSceneState === 'viaje') {
+                    if (this.leverModel) {
+                        const intersectsLever = this.raycaster.intersectObject(this.leverModel, true);
+                        if (intersectsLever.length > 0) {
+                            // Jalar palanca: activar rotación de la manija
+                            this.leverTargetRotation = Math.PI / 3; // Rotar hacia abajo
+                            this.playLeverClickSound();
+                            
+                            // Retornar al taller después de la animación de jalar
+                            setTimeout(() => {
+                                this.returnToTaller();
+                            }, 400);
+                        }
+                    }
+                    return;
+                }
+
+                // Lógica de Raycasting en el Modo Taller (Arrastre estándar)
+                const intersects = this.raycaster.intersectObjects(this.objects, true);
+
+                if (intersects.length > 0) {
+                    let target = intersects[0].object;
+                    while (target.parent && !this.objects.includes(target)) {
+                        target = target.parent;
+                    }
+
+                    if (this.objects.includes(target)) {
+                        this.selectedObject = target;
+                        this.selectedObject.userData.isFlying = false;
+
+                        const currentY = this.selectedObject.position.y;
+                        this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, currentY, 0));
+
+                        if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
+                            this.offset.copy(this.selectedObject.position).sub(this.intersectionPoint);
+                        }
+
+                        this.selectedObject.position.y += 0.08;
+                        this.playWobbleSound();
+                    }
+                }
+            }
+
+            onPointerMove(event) {
+                if (this.currentSceneState !== 'taller') return;
+                this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+                if (this.selectedObject) {
+                    this.raycaster.setFromCamera(this.mouse, xb.core.camera);
+
+                    let targetY = 0.9;
+                    if (this.mouse.y > 0.2 && this.mouse.y <= 0.6) {
+                        targetY = 1.45; 
+                    } else if (this.mouse.y > 0.6) {
+                        targetY = 1.8;  
+                    }
+
+                    this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, targetY, 0));
+
+                    if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
+                        const targetX = this.intersectionPoint.x + this.offset.x;
+                        const targetZ = this.intersectionPoint.z + this.offset.z;
+
+                        if (targetY === 1.8) {
+                            this.selectedObject.position.set(
+                                Math.max(-1.3, Math.min(1.3, targetX)),
+                                1.8,
+                                Math.max(-1.3, Math.min(0.3, targetZ))
+                            );
+                        } else if (targetY === 1.45) {
+                            this.selectedObject.position.x = Math.max(-0.8, Math.min(0.8, targetX));
+                            this.selectedObject.position.z = Math.max(-1.75, Math.min(-1.55, targetZ));
+                            this.selectedObject.position.y = 1.45;
+                        } else {
+                            const distanceToPedestal = Math.sqrt(targetX*targetX + (targetZ - (-0.5))*(targetZ - (-0.5)));
+                            
+                            if (distanceToPedestal < 0.15) {
+                                this.selectedObject.position.set(0, 0.94, -0.5);
+                            } else {
+                                this.selectedObject.position.set(
+                                    Math.max(-1.0, Math.min(1.0, targetX)),
+                                    0.9,
+                                    Math.max(-0.95, Math.min(-0.05, targetZ))
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            onPointerUp(event) {
+                if (this.currentSceneState !== 'taller') return;
+                if (this.selectedObject) {
+                    const currentY = this.selectedObject.position.y;
+                    const type = this.selectedObject.userData.type;
+                    const posX = this.selectedObject.position.x;
+                    const posZ = this.selectedObject.position.z;
+
+                    if (currentY >= 1.7 && type === 'plane') {
+                        this.selectedObject.userData.isFlying = true;
+                        this.selectedObject.userData.flightAngle = Math.atan2(posZ - (-0.5), posX);
+                        this.playSparkleSound();
+                    } else if (Math.sqrt(posX*posX + (posZ - (-0.5))*(posZ - (-0.5))) < 0.15 && currentY < 1.3) {
+                        this.selectedObject.position.set(0, 0.94, -0.5);
+                        this.playClinkSound();
+                    } else if (currentY >= 1.35 && currentY < 1.7) {
+                        this.selectedObject.position.y = 1.45;
+                        this.playClinkSound();
+                    } else {
+                        this.selectedObject.position.y = 0.9;
+                        this.playClinkSound();
+                    }
+                }
+                this.selectedObject = null;
+            }
+
+            // --- GESTIÓN DE TRANSICIÓN Y CARGA DE NUEVA ESCENA ---
+            triggerTravelTransition() {
+                this.currentSceneState = 'viaje';
+                this.transitionTriggered = true;
+
+                const overlay = document.getElementById('transition-overlay');
+                const statusText = document.getElementById('transition-status');
+                
+                overlay.classList.remove('pointer-events-none', 'opacity-0');
+                overlay.classList.add('opacity-100');
+
+                this.playShipHornSound();
+
+                setTimeout(() => {
+                    this.tallerGroup.visible = false;
+                    this.viajeGroup.visible = true;
+
+                    // Apagar luces del taller
+                    this.lampLight.intensity = 0;
+                    this.candleLight.intensity = 0;
+
+                    // Ocultar interfaces 2D secundarias
+                    document.querySelector('footer').classList.add('opacity-0', 'pointer-events-none');
+                    document.querySelector('header').classList.add('opacity-0', 'pointer-events-none');
+                    
+                    statusText.innerText = "Cargando escena marítima e instrumentos de retorno...";
+
+                    // Cargar la Palanca de Retorno Interactiva
+                    this.loadLeverModel();
+
+                    // Cargar el escenario marítimo custom
+                    const loader = new GLTFLoader();
+                    loader.load(modelUrls.viajeEscena, (gltf) => {
+                        // Limpiar escena de viaje antigua excepto luces del barco
+                        while(this.viajeGroup.children.length > 3) { 
+                            this.viajeGroup.remove(this.viajeGroup.children[3]);
+                        }
+
+                        const extScene = gltf.scene;
+                        extScene.traverse(child => {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                            }
+                        });
+
+                        const box = new THREE.Box3().setFromObject(extScene);
+                        const size = box.getSize(new THREE.Vector3());
+                        const maxDim = Math.max(size.x, size.y, size.z);
+                        const scaleFactor = 6.0 / maxDim;
+                        extScene.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                        
+                        const center = box.getCenter(new THREE.Vector3());
+                        extScene.position.set(-center.x * scaleFactor, -box.min.y * scaleFactor, -center.z * scaleFactor);
+
+                        this.viajeGroup.add(extScene);
+                        
+                        // Añadir punto de luz flotante dentro del camarote de barco custom
+                        this.boatCabinLight.position.set(0, 1.2, 0);
+
+                        this.finalizeTransition();
+
+                    }, undefined, (err) => {
+                        console.warn("Fallo carga de escena de Github. Iniciando escenario de respaldo procedural...", err);
+                        this.buildProceduralSeaScene();
+                        this.finalizeTransition();
+                    });
+
+                }, 1500);
+            }
+
+            // Cargar e instalar el Modelo de la Palanca GLTF en la pared
+            loadLeverModel() {
+                const loader = new GLTFLoader();
+                loader.load(modelUrls.palanca, (gltf) => {
+                    if (this.leverModel) {
+                        this.viajeGroup.remove(this.leverModel);
+                    }
+
+                    this.leverModel = gltf.scene;
+
+                    // Crear panel de soporte de pared rústica para montar la palanca
+                    const mountPanel = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.35, 0.5, 0.04),
+                        new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.9 })
+                    );
+                    mountPanel.position.set(-1.1, 1.3, -0.98);
+                    mountPanel.rotation.y = Math.PI / 4;
+                    mountPanel.castShadow = true; mountPanel.receiveShadow = true;
+                    this.viajeGroup.add(mountPanel);
+
+                    // Escalar y posicionar palanca de retorno de cara a la cámara
+                    this.leverModel.scale.set(0.2, 0.2, 0.2);
+                    this.leverModel.position.set(-1.1, 1.3, -0.95);
+                    this.leverModel.rotation.y = Math.PI / 4;
+                    this.leverModel.rotation.x = 0;
+
+                    this.leverModel.traverse(child => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            // Encontrar el nodo dinámico de la manija de palanca para animar rotación
+                            if (child.name.toLowerCase().includes("manija") || child.name.toLowerCase().includes("lever") || child.name.toLowerCase().includes("handle") || child.name.toLowerCase().includes("palanca")) {
+                                this.leverHandle = child;
+                            }
+                        }
+                    });
+
+                    // Si no se encuentra la pieza por nombre, animamos todo el modelo pivotando ligeramente
+                    if (!this.leverHandle) {
+                        this.leverHandle = this.leverModel;
+                    }
+
+                    // Forzar rotación inicial de la manija (hacia arriba)
+                    this.leverTargetRotation = 0;
+                    this.leverCurrentRotation = 0;
+                    this.leverHandle.rotation.x = -Math.PI / 4;
+
+                    this.viajeGroup.add(this.leverModel);
+                });
+            }
+
+            buildProceduralSeaScene() {
+                while(this.viajeGroup.children.length > 3) {
+                    this.viajeGroup.remove(this.viajeGroup.children[3]);
+                }
+
+                const seaGroup = new THREE.Group();
+
+                const seaGeo = new THREE.PlaneGeometry(12, 12, 16, 16);
+                const seaMat = new THREE.MeshStandardMaterial({
+                    color: 0x0f2a4a,
+                    roughness: 0.1,
+                    metalness: 0.8,
+                    flatShading: true
+                });
+                this.seaMesh = new THREE.Mesh(seaGeo, seaMat);
+                this.seaMesh.rotation.x = -Math.PI / 2;
+                this.seaMesh.position.y = 0.1;
+                this.seaMesh.receiveShadow = true;
+                seaGroup.add(this.seaMesh);
+
+                const islandMat = new THREE.MeshStandardMaterial({ color: 0x2e3a24, roughness: 0.9, flatShading: true });
+                const numIslands = 5;
+                for (let i = 0; i < numIslands; i++) {
+                    const radius = 0.4 + Math.random() * 0.6;
+                    const height = 0.6 + Math.random() * 1.2;
+                    const cone = new THREE.Mesh(new THREE.ConeGeometry(radius, height, 5), islandMat);
+                    
+                    const angle = (i / numIslands) * Math.PI * 2 + Math.random() * 0.5;
+                    const dist = 2.0 + Math.random() * 1.5;
+                    cone.position.set(Math.cos(angle) * dist, height / 2 - 0.1, Math.sin(angle) * dist);
+                    cone.castShadow = true;
+                    cone.receiveShadow = true;
+                    seaGroup.add(cone);
+                }
+
+                const boatTemplate = toyTemplates['boat'];
+                if (boatTemplate) {
+                    this.seaBoat = boatTemplate.clone();
+                    this.seaBoat.position.set(0, 0.15, 0);
+                    this.seaBoat.scale.set(1.5, 1.5, 1.5);
+                    seaGroup.add(this.seaBoat);
+                }
+
+                this.viajeGroup.add(seaGroup);
+            }
+
+            finalizeTransition() {
+                const overlay = document.getElementById('transition-overlay');
+                setTimeout(() => {
+                    overlay.classList.remove('opacity-100');
+                    overlay.classList.add('opacity-0', 'pointer-events-none');
+                }, 800);
+            }
+
+            returnToTaller() {
+                const overlay = document.getElementById('transition-overlay');
+                const statusText = document.getElementById('transition-status');
+                
+                statusText.innerText = "Regresando al taller seguro...";
+                overlay.classList.remove('pointer-events-none', 'opacity-0');
+                overlay.classList.add('opacity-100');
+
+                this.playSweepSound();
+
+                setTimeout(() => {
+                    this.viajeGroup.visible = false;
+                    this.tallerGroup.visible = true;
+
+                    // Restablecer intensidad de luces de mesa
+                    const sliderLampVal = document.getElementById('slider-lamp').value;
+                    this.lampLight.intensity = (sliderLampVal / 100) * 1.8;
+                    this.candleLight.intensity = 1.3;
+
+                    // Devolver visibilidad a interfaces de taller
+                    document.querySelector('footer').classList.remove('opacity-0', 'pointer-events-none');
+                    document.querySelector('header').classList.remove('opacity-0', 'pointer-events-none');
+
+                    document.getElementById('btn-back-taller').classList.add('hidden');
+
+                    // Mover el barco para que no se quede bloqueando el pedestal y reinicie el viaje
+                    this.objects.forEach(obj => {
+                        if (obj.userData.type === 'boat') {
+                            obj.position.set(0.4, 0.9, -0.3); 
+                            obj.rotation.y = Math.PI / 4;
+                        }
+                    });
+
+                    this.currentSceneState = 'taller';
+                    this.transitionTriggered = false;
+
+                    this.finalizeTransition();
+
+                }, 1500);
+            }
+
+            // --- LOOP DE ANIMACIÓN ---
+            update() {
+                const elapsedTime = performance.now() * 0.001;
+
+                if (this.currentSceneState === 'viaje') {
+                    // Animación de la palanca (jalar físicamente hacia abajo)
+                    if (this.leverHandle) {
+                        this.leverCurrentRotation = THREE.MathUtils.lerp(this.leverCurrentRotation, this.leverTargetRotation, 0.15);
+                        this.leverHandle.rotation.x = -Math.PI / 4 + this.leverCurrentRotation;
+                    }
+
+                    // Oleaje de mar procedural de respaldo
+                    if (this.seaMesh) {
+                        const posAttr = this.seaMesh.geometry.attributes.position;
+                        for (let i = 0; i < posAttr.count; i++) {
+                            const u = posAttr.getX(i);
+                            const v = posAttr.getY(i);
+                            const z = Math.sin(u * 1.5 + elapsedTime * 1.2) * 0.12 + Math.cos(v * 1.5 + elapsedTime * 1.2) * 0.12;
+                            posAttr.setZ(i, z);
+                        }
+                        this.seaMesh.geometry.attributes.position.needsUpdate = true;
+                    }
+                    if (this.seaBoat) {
+                        this.seaBoat.position.y = 0.15 + Math.sin(elapsedTime * 1.5) * 0.04;
+                        this.seaBoat.rotation.z = Math.sin(elapsedTime * 2.0) * 0.05;
+                        this.seaBoat.rotation.x = Math.cos(elapsedTime * 1.5) * 0.03;
+                    }
+
+                    // Efecto titileo de luz de camarote
+                    if (this.boatCabinLight) {
+                        this.boatCabinLight.intensity = 2.5 + Math.sin(elapsedTime * 5.0) * 0.2 + Math.random() * 0.05;
+                    }
+                    return; 
+                }
+
+                // 1. Titileo vela taller
+                this.candleTime += 0.15;
+                if (this.candleLight && this.candleLight.visible) {
+                    this.candleLight.intensity = 1.3 + Math.sin(this.candleTime * 1.5) * 0.12 + Math.random() * 0.03;
+                    if (this.candleFlame) {
+                        this.candleFlame.scale.y = 1.0 + Math.sin(this.candleTime * 2.5) * 0.15;
+                        this.candleFlame.scale.x = 1.0 + Math.cos(this.candleTime * 1.8) * 0.1;
+                    }
+                }
+
+                // DETECCION DE BARCO EN PEDESTAL
+                let boatOnPedestal = false;
+                this.objects.forEach(obj => {
+                    if (obj.userData.type === 'boat' && !obj.userData.isFlying) {
+                        const distToPedestal = obj.position.distanceTo(new THREE.Vector3(0, 0.94, -0.5));
+                        if (distToPedestal < 0.08) {
+                            boatOnPedestal = true;
+                        }
+                    }
+                });
+
+                if (boatOnPedestal) {
+                    this.pedestalWoodMat.color.setHex(0x1b5e20);
+                    this.pedestalMetalMat.color.setHex(0x4caf50);
+                    this.pedestalMetalMat.emissive.setHex(0x0e3a0e);
+
+                    if (!this.transitionTriggered) {
+                        this.triggerTravelTransition();
+                    }
+                } else {
+                    this.pedestalWoodMat.color.setHex(0x4a2a18);
+                    this.pedestalMetalMat.color.setHex(0xd4af37);
+                    this.pedestalMetalMat.emissive.setHex(0x000000);
+                }
+
+                // 2. Partículas de polvo
+                if (this.dustParticles) {
+                    const positions = this.dustParticles.geometry.attributes.position.array;
+                    const speeds = this.dustParticles.userData.speeds;
+
+                    for (let i = 0; i < speeds.length; i++) {
+                        const i3 = i * 3;
+                        positions[i3] += speeds[i].x;
+                        positions[i3 + 1] += speeds[i].y + Math.sin(elapsedTime + speeds[i].phase) * 0.002;
+                        positions[i3 + 2] += speeds[i].z;
+
+                        if (positions[i3 + 1] > 3.8) {
+                            positions[i3 + 1] = 0.9;
+                            positions[i3] = (Math.random() - 0.5) * 4;
+                        }
+                    }
+                    this.dustParticles.geometry.attributes.position.needsUpdate = true;
+                }
+
+                // 3. Vuelo circular del avión
+                this.objects.forEach(obj => {
+                    const isPlane = obj.userData.type === 'plane';
+                    const uuid = obj.userData.uuid;
+
+                    if (isPlane) {
+                        if (obj.userData.isFlying && obj !== this.selectedObject) {
+                            obj.userData.flightAngle += 0.012;
+                            const radiusX = 1.1;
+                            const radiusZ = 0.7;
+
+                            obj.position.x = Math.cos(obj.userData.flightAngle) * radiusX;
+                            obj.position.z = -0.5 + Math.sin(obj.userData.flightAngle) * radiusZ;
+                            obj.position.y = 1.8 + Math.sin(obj.userData.flightAngle * 2.0) * 0.08;
+
+                            obj.rotation.y = -obj.userData.flightAngle + Math.PI;
+                            obj.rotation.z = Math.sin(obj.userData.flightAngle) * 0.22;
+                            obj.rotation.x = Math.cos(obj.userData.flightAngle * 2.0) * 0.08;
+
+                            let thread = this.planeThreads.get(uuid);
+                            if (!thread) {
+                                const lineGeo = new THREE.BufferGeometry().setFromPoints([
+                                    new THREE.Vector3(0, 3.8, -0.5),
+                                    new THREE.Vector3(0, 1.8, -0.5)
+                                ]);
+                                const lineMat = new THREE.LineBasicMaterial({
+                                    color: 0xcccccc,
+                                    transparent: true,
+                                    opacity: 0.35
+                                });
+                                thread = new THREE.Line(lineGeo, lineMat);
+                                this.tallerGroup.add(thread);
+                                this.planeThreads.set(uuid, thread);
+                            }
+
+                            const positions = thread.geometry.attributes.position.array;
+                            positions[0] = obj.position.x;
+                            positions[1] = 3.8; 
+                            positions[2] = obj.position.z;
+                            positions[3] = obj.position.x;
+                            positions[4] = obj.position.y;
+                            positions[5] = obj.position.z;
+
+                            thread.geometry.attributes.position.needsUpdate = true;
+                            thread.visible = true;
+                        } else {
+                            const thread = this.planeThreads.get(uuid);
+                            if (thread) thread.visible = false;
+                        }
+                    }
+                });
+            }
+
+            // --- CONTROLES DE INTERFAZ Y AJUSTE DE ILUMINACIÓN ---
+            setupUIHandlers() {
+                const sliderWarmth = document.getElementById('slider-warmth');
+                const txtWarmth = document.getElementById('txt-warmth');
+                const sliderLamp = document.getElementById('slider-lamp');
+                const txtLamp = document.getElementById('txt-lamp');
+                const btnCandle = document.getElementById('btn-candle');
+                const btnMusic = document.getElementById('btn-music');
+                const btnClear = document.getElementById('btn-clear');
+                const btnBack = document.getElementById('btn-back-taller');
+
+                document.getElementById('btn-spawn-train').addEventListener('click', () => this.spawnToy('train'));
+                document.getElementById('btn-spawn-plane').addEventListener('click', () => this.spawnToy('plane'));
+                document.getElementById('btn-spawn-boat').addEventListener('click', () => this.spawnToy('boat'));
+                document.getElementById('btn-spawn-truck').addEventListener('click', () => this.spawnToy('truck'));
+                btnClear.addEventListener('click', () => this.clearToys());
+                btnBack.addEventListener('click', () => this.returnToTaller());
+
+                sliderWarmth.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    const r = 255;
+                    const g = Math.round(112 + (128 * (100 - val) / 100));
+                    const b = Math.round(16 + (205 * (100 - val) / 100));
+                    const hexColor = (r << 16) + (g << 8) + b;
+
+                    this.lampLight.color.setHex(hexColor);
+                    this.lampBulbGlow.material.color.setHex(hexColor);
+                    this.ambientLight.color.setHex(hexColor);
+
+                    if (val > 80) txtWarmth.innerText = "Máxima (Cobre)";
+                    else if (val > 40) txtWarmth.innerText = "Acogedora (Ámbar)";
+                    else txtWarmth.innerText = "Suave (Vela)";
+                });
+
+                sliderLamp.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    const intensity = (val / 100) * 1.8;
+                    this.lampLight.intensity = intensity;
+                    txtLamp.innerText = `${val}%`;
+
+                    if (intensity === 0) {
+                        this.lampBulbGlow.material.color.setHex(0x1a1a1a);
+                    } else {
+                        const warmthVal = sliderWarmth.value;
+                        const r = 255;
+                        const g = Math.round(112 + (128 * (100 - warmthVal) / 100));
+                        const b = Math.round(16 + (205 * (100 - warmthVal) / 100));
+                        this.lampBulbGlow.material.color.setHex((r << 16) + (g << 8) + b);
+                    }
+                });
+
+                btnCandle.addEventListener('click', () => {
+                    this.candleLight.visible = !this.candleLight.visible;
+                    if (this.candleFlame) this.candleFlame.visible = this.candleLight.visible;
+
+                    if (this.candleLight.visible) {
+                        btnCandle.innerHTML = `<i data-lucide="flame" class="w-3.5 h-3.5 text-orange-500 fill-orange-500"></i> Vela: Encendida`;
+                        btnCandle.className = "py-1.5 px-2 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-600/40 hover:border-amber-500 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition";
+                        this.playSparkleSound();
+                    } else {
+                        btnCandle.innerHTML = `<i data-lucide="flame" class="w-3.5 h-3.5 text-zinc-500"></i> Vela: Apagada`;
+                        btnCandle.className = "py-1.5 px-2 bg-zinc-950/40 hover:bg-zinc-900/40 border border-zinc-800/40 hover:border-zinc-500 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 text-zinc-400 transition";
+                        this.playSwooshSound();
+                    }
+                    lucide.createIcons();
+                });
+
+                btnMusic.addEventListener('click', () => {
+                    this.toggleMusicBoxLoop();
+                });
+            }
+
+            // --- Sintetizador Web Audio (Cajita de Música) ---
+            getAudioContext() {
+                if (!this.audioCtx) {
+                    this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.audioCtx.state === 'suspended') {
+                    this.audioCtx.resume();
+                }
+                return this.audioCtx;
+            }
+
+            scheduleNextNote() {
+                const ctx = this.getAudioContext();
+                while (this.musicNextNoteTime < ctx.currentTime + 0.1) {
+                    const stepData = this.musicBoxMelody[this.melodyStep];
+                    this.playMusicBoxNote(stepData.note, this.musicNextNoteTime, stepData.duration);
+                    this.musicNextNoteTime += stepData.duration;
+                    this.melodyStep = (this.melodyStep + 1) % this.musicBoxMelody.length;
+                }
+            }
+
+            playMusicBoxNote(frequency, time, duration) {
+                const ctx = this.getAudioContext();
+                const osc1 = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(frequency, time);
+
+                const osc2 = ctx.createOscillator();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(frequency * 2, time);
+
+                const gain2 = ctx.createGain();
+                gain2.gain.setValueAtTime(0.02, time);
+
+                gainNode.gain.setValueAtTime(0.0, time);
+                gainNode.gain.linearRampToValueAtTime(0.08, time + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration * 2.5);
+
+                osc1.connect(gainNode);
+                osc2.connect(gain2);
+                gain2.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                osc1.start(time);
+                osc2.start(time);
+                osc1.stop(time + duration * 2.6);
+                osc2.stop(time + duration * 2.6);
+            }
+
+            toggleMusicBoxLoop() {
+                const btnMusic = document.getElementById('btn-music');
+                const icon = document.getElementById('music-icon');
+                const badge = document.getElementById('music-badge');
+
+                if (this.isMusicPlaying) {
+                    this.isMusicPlaying = false;
+                    clearInterval(this.musicTimer);
+                    this.musicTimer = null;
+
+                    btnMusic.classList.remove('animate-pulse', 'bg-amber-500/20', 'border-amber-400');
+                    icon.setAttribute('data-lucide', 'music');
+                    badge.classList.add('hidden');
+                    lucide.createIcons();
+                    this.playSwooshSound();
+                } else {
+                    const ctx = this.getAudioContext();
+                    this.isMusicPlaying = true;
+                    this.melodyStep = 0;
+                    this.musicNextNoteTime = ctx.currentTime + 0.05;
+
+                    btnMusic.classList.add('animate-pulse', 'bg-amber-500/20', 'border-amber-400');
+                    icon.setAttribute('data-lucide', 'volume-2');
+                    badge.classList.remove('hidden');
+                    lucide.createIcons();
+
+                    this.musicTimer = setInterval(() => this.scheduleNextNote(), 50);
+                }
+            }
+
+            playShipHornSound() {
+                try {
+                    const ctx = this.getAudioContext();
+                    const now = ctx.currentTime;
+                    
+                    const osc1 = ctx.createOscillator();
+                    const osc2 = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc1.type = 'sawtooth';
+                    osc1.frequency.setValueAtTime(105, now); 
+                    
+                    osc2.type = 'triangle';
+                    osc2.frequency.setValueAtTime(157.5, now); 
+                    
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.18, now + 0.1);
+                    gain.gain.setValueAtTime(0.18, now + 1.2);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+                    
+                    osc1.connect(gain);
+                    osc2.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    osc1.start(now);
+                    osc2.start(now);
+                    osc1.stop(now + 1.9);
+                    osc2.stop(now + 1.9);
+                } catch(e){}
+            }
+
+            playLeverClickSound() {
+                try {
+                    const ctx = this.getAudioContext();
+                    const now = ctx.currentTime;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(80, now);
+                    osc.frequency.exponentialRampToValueAtTime(200, now + 0.12);
+                    
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    osc.start(now);
+                    osc.stop(now + 0.16);
+                } catch(e){}
+            }
+
+            playClinkSound() {
+                try {
+                    const ctx = this.getAudioContext();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(130, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(70, ctx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.16);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.17);
+                } catch (e) {}
+            }
+
+            playWobbleSound() {
+                try {
+                    const ctx = this.getAudioContext();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(290, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(420, ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.06, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.13);
+                } catch (e) {}
+            }
+
+            playSwooshSound() {
+                try {
+                    const ctx = this.getAudioContext();
+                    const bufferSize = ctx.sampleRate * 0.2;
+                    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = Math.random() * 2 - 1;
+                    }
+                    const noise = ctx.createBufferSource();
+                    noise.buffer = buffer;
+                    const filter = ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(350, ctx.currentTime);
+                    filter.frequency.exponentialRampToValueAtTime(10, ctx.currentTime + 0.18);
+                    const gain = ctx.createGain();
+                    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.18);
+                    noise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(ctx.destination);
+                    noise.start();
+                } catch (e) {}
+            }
+
+            playSparkleSound() {
+                try {
+                    const ctx = this.getAudioContext();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(800, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1600, ctx.currentTime + 0.12);
+                    gain.gain.setValueAtTime(0.04, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.16);
+                } catch (e) {}
+            }
+
+            playSweepSound() {
+                try {
+                    const ctx = this.getAudioContext();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(90, ctx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(40, ctx.currentTime + 0.35);
+                    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.38);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.4);
+                } catch (e) {}
+            }
+        }
+
+        // Inicializar XR Blocks
+        document.addEventListener('DOMContentLoaded', () => {
+            const options = new xb.Options();
+            options.setAppTitle("Taller del Juguetero 3D");
+            options.enableUI();
+            
+            xb.add(new ToyWorkshopScript());
+            xb.init(options);
+        });
+    </script>
+  </body>
+</html>
