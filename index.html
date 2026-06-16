@@ -290,6 +290,7 @@
                 this.xrMenu = null;
                 this.xrMenuItems = [];
                 this.xrMenuOpen = false;
+                this.xrLastMenuToggleTime = 0;
                 
                 // Grupos para administrar escenas
                 this.tallerGroup = new THREE.Group();
@@ -522,6 +523,7 @@
                     { label: 'Iluminacion', action: 'light' },
                     { label: 'Musica', action: 'music' },
                     { label: 'Volver al inicio', action: 'home' },
+                    { label: 'Cerrar menu', action: 'close' },
                     { label: 'Cerrar simulacion', action: 'exit' }
                 ];
 
@@ -530,7 +532,7 @@
                         new THREE.PlaneGeometry(0.96, 0.18),
                         new THREE.MeshBasicMaterial({ map: this.createXRTextTexture(item.label, 512, 128, { size: 32 }), transparent: true, side: THREE.DoubleSide })
                     );
-                    button.position.y = 0.25 - index * 0.25;
+                    button.position.y = 0.30 - index * 0.22;
                     button.userData.xrMenuAction = item.action;
                     menu.add(button);
                     this.xrMenuItems.push(button);
@@ -596,6 +598,9 @@
                         this.spawnInitialToys();
                         this.playSweepSound();
                     }
+                } else if (action === 'close') {
+                    this.setXRMenuVisible(false);
+                    this.playClinkSound();
                 } else if (action === 'exit') {
                     this.setXRMenuVisible(false);
                     const session = xb.core.renderer?.xr?.getSession?.();
@@ -684,7 +689,7 @@
             isQuestXButtonPressed(source) {
                 if (!source || source.handedness !== 'left' || !source.gamepad) return false;
                 const buttons = source.gamepad.buttons || [];
-                return Boolean(buttons[4]?.pressed || buttons[4]?.touched);
+                return Boolean(buttons[4]?.pressed);
             }
 
             updateXRButtonPolling() {
@@ -692,10 +697,14 @@
                 if (!session) return;
 
                 for (const source of session.inputSources) {
-                    const key = `${source.handedness || 'unknown'}-${source.profiles?.[0] || 'controller'}`;
+                    const key = source.handedness || 'unknown';
                     const xPressed = this.isQuestXButtonPressed(source);
-                    const previous = this.xrButtonStates.get(key) || {};
-                    if (xPressed && !previous.xPressed) {
+                    const previous = this.xrButtonStates.get(key) || { xPressed: false };
+                    const now = performance.now();
+                    const canToggle = now - this.xrLastMenuToggleTime > 350;
+
+                    if (xPressed && !previous.xPressed && canToggle) {
+                        this.xrLastMenuToggleTime = now;
                         this.toggleXRMenu();
                     }
                     this.xrButtonStates.set(key, { xPressed });
@@ -1795,7 +1804,7 @@
                     extScene.scale.set(scaleFactor, scaleFactor, scaleFactor);
                     
                     const center = box.getCenter(new THREE.Vector3());
-                    extScene.position.set(-center.x * scaleFactor, -box.min.y * scaleFactor, -center.z * scaleFactor);
+                    extScene.position.set(-center.x * scaleFactor, 0, -center.z * scaleFactor);
 
                     if (this.activeTravelToy === 'boat') {
                         this.boatSceneRoot = new THREE.Group();
@@ -3224,6 +3233,9 @@
     </script>
   </body>
 </html>
+
+
+
 
 
 
