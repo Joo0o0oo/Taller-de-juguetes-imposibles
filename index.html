@@ -280,6 +280,16 @@
                 this.intersectionPoint = new THREE.Vector3();
                 this.raycaster = new THREE.Raycaster();
                 this.mouse = new THREE.Vector2();
+                this.xrControllers = [];
+                this.xrControllerRays = [];
+                this.xrTempMatrix = new THREE.Matrix4();
+                this.activeXRController = null;
+                this.currentInputSource = 'pointer';
+                this.isXRSessionActive = false;
+                this.xrButtonStates = new Map();
+                this.xrMenu = null;
+                this.xrMenuItems = [];
+                this.xrMenuOpen = false;
                 
                 // Grupos para administrar escenas
                 this.tallerGroup = new THREE.Group();
@@ -393,6 +403,8 @@
 
                 renderer.xr.addEventListener('sessionstart', () => {
                     this.isXRSessionActive = true;
+                    this.xrButtonStates.clear();
+                    this.createXRMenu();
                     document.querySelector('header')?.classList.add('opacity-0', 'pointer-events-none');
                     document.querySelector('footer')?.classList.add('opacity-0', 'pointer-events-none');
                 });
@@ -402,6 +414,7 @@
                     this.activeXRController = null;
                     this.selectedObject = null;
                     this.selectedBoatObject = null;
+                    this.setXRMenuVisible(false);
                     if (this.currentSceneState === 'taller') {
                         document.querySelector('header')?.classList.remove('opacity-0', 'pointer-events-none');
                         document.querySelector('footer')?.classList.remove('opacity-0', 'pointer-events-none');
@@ -411,31 +424,144 @@
                 for (let i = 0; i < 2; i++) {
                     const controller = renderer.xr.getController(i);
                     controller.userData.index = i;
+                    controller.userData.handedness = i === 0 ? 'left' : 'right';
+                    controller.addEventListener('connected', (event) => {
+                        controller.userData.inputSource = event.data;
+                        controller.userData.handedness = event.data.handedness || controller.userData.handedness;
+                        controller.visible = true;
+                        const ray = controller.children.find(child => child.name === 'Meta Quest pointer ray');
+                        if (ray) {
+                            ray.visible = true;
+                            ray.material.color.setHex(controller.userData.handedness === 'left' ? 0x7dd3fc : 0xffd166);
+                        }
+                    });
+                    controller.addEventListener('disconnected', () => {
+                        controller.userData.inputSource = null;
+                        controller.visible = false;
+                    });
                     controller.addEventListener('selectstart', () => this.onXRSelectStart(controller));
                     controller.addEventListener('selectend', () => this.onXRSelectEnd(controller));
 
-                    const ray = this.createXRControllerRay();
+                    const ray = this.createXRControllerRay(i);
                     controller.add(ray);
+                    controller.visible = true;
                     this.xrControllers.push(controller);
                     this.xrControllerRays.push(ray);
                     xb.core.scene.add(controller);
                 }
             }
 
-            createXRControllerRay() {
+            createXRControllerRay(index = 0) {
                 const geometry = new THREE.BufferGeometry().setFromPoints([
                     new THREE.Vector3(0, 0, 0),
                     new THREE.Vector3(0, 0, -1)
                 ]);
                 const material = new THREE.LineBasicMaterial({
-                    color: 0xffd166,
+                    color: index === 0 ? 0x7dd3fc : 0xffd166,
                     transparent: true,
-                    opacity: 0.85
+                    opacity: 0.9
                 });
                 const line = new THREE.Line(geometry, material);
                 line.name = 'Meta Quest pointer ray';
-                line.scale.z = 1.8;
+                line.scale.z = 2.4;
+
+                const tip = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.012, 12, 8),
+                    new THREE.MeshBasicMaterial({ color: index === 0 ? 0x7dd3fc : 0xffd166 })
+                );
+                tip.position.z = -1;
+                tip.name = 'Meta Quest pointer tip';
+                line.add(tip);
                 return line;
+            }
+
+            createXRTextTexture(text, width = 512, height = 128, options = {}) {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = options.background || 'rgba(24, 12, 4, 0.92)';
+                ctx.fillRect(0, 0, width, height);
+                ctx.strokeStyle = options.border || 'rgba(245, 158, 11, 0.75)';
+                ctx.lineWidth = 8;
+                ctx.strokeRect(4, 4, width - 8, height - 8);
+                ctx.fillStyle = options.color || '#fde68a';
+                ctx.font = `${options.weight || 700} ${options.size || 34}px Quicksand, Arial, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(text, width / 2, height / 2);
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.colorSpace = THREE.SRGBColorSpace;
+                texture.needsUpdate = true;
+                return texture;
+            }
+
+            createXRMenu() {
+                if (this.xrMenu) return;
+
+                const menu = new THREE.Group();
+                menu.name = 'Menu VR Meta Quest';
+                menu.visible = false;
+
+                const back = new THREE.Mesh(
+                    new THREE.PlaneGeometry(1.18, 1.28),
+                    new THREE.MeshBasicMaterial({ color: 0x130904, transparent: true, opacity: 0.88, side: THREE.DoubleSide })
+                );
+                back.position.z = -0.015;
+                menu.add(back);
+
+                const title = new THREE.Mesh(
+                    new THREE.PlaneGeometry(1.02, 0.18),
+                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('Menu de opciones', 512, 128, { size: 36, background: 'rgba(69, 26, 3, 0.98)' }), transparent: true, side: THREE.DoubleSide })
+                );
+                title.position.y = 0.49;
+                menu.add(title);
+
+                this.xrMenuItems = [];
+                const items = [
+                    { label: 'Iluminacion', action: 'light' },
+                    { label: 'Musica', action: 'music' },
+                    { label: 'Volver al inicio', action: 'home' },
+                    { label: 'Cerrar simulacion', action: 'exit' }
+                ];
+
+                items.forEach((item, index) => {
+                    const button = new THREE.Mesh(
+                        new THREE.PlaneGeometry(0.96, 0.18),
+                        new THREE.MeshBasicMaterial({ map: this.createXRTextTexture(item.label, 512, 128, { size: 32 }), transparent: true, side: THREE.DoubleSide })
+                    );
+                    button.position.y = 0.25 - index * 0.25;
+                    button.userData.xrMenuAction = item.action;
+                    menu.add(button);
+                    this.xrMenuItems.push(button);
+                });
+
+                xb.core.scene.add(menu);
+                this.xrMenu = menu;
+            }
+
+            setXRMenuVisible(visible) {
+                this.createXRMenu();
+                this.xrMenuOpen = visible;
+                this.xrMenu.visible = visible;
+                if (visible) {
+                    this.positionXRMenuInFrontOfCamera();
+                    this.playSparkleSound();
+                }
+            }
+
+            toggleXRMenu() {
+                this.setXRMenuVisible(!this.xrMenuOpen);
+            }
+
+            positionXRMenuInFrontOfCamera() {
+                if (!this.xrMenu) return;
+                const camera = xb.core.renderer.xr.isPresenting ? xb.core.renderer.xr.getCamera(xb.core.camera) : xb.core.camera;
+                const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                const position = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld);
+                this.xrMenu.position.copy(position).add(direction.multiplyScalar(1.65));
+                this.xrMenu.position.y = Math.max(1.05, this.xrMenu.position.y - 0.08);
+                this.xrMenu.quaternion.copy(camera.quaternion);
             }
 
             setRaycasterFromXRController(controller) {
@@ -444,10 +570,65 @@
                 this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.xrTempMatrix);
             }
 
+            handleXRMenuSelection(controller) {
+                if (!this.xrMenuOpen || !this.xrMenuItems.length) return false;
+                this.setRaycasterFromXRController(controller);
+                const hits = this.raycaster.intersectObjects(this.xrMenuItems, false);
+                if (hits.length === 0) return false;
+
+                const action = hits[0].object.userData.xrMenuAction;
+                this.runXRMenuAction(action);
+                return true;
+            }
+
+            runXRMenuAction(action) {
+                if (action === 'light') {
+                    this.cycleXRLighting();
+                } else if (action === 'music') {
+                    this.toggleMusicBoxLoop();
+                    this.playClinkSound();
+                } else if (action === 'home') {
+                    this.setXRMenuVisible(false);
+                    if (this.currentSceneState === 'viaje') {
+                        this.returnToTaller();
+                    } else {
+                        this.clearToys();
+                        this.spawnInitialToys();
+                        this.playSweepSound();
+                    }
+                } else if (action === 'exit') {
+                    this.setXRMenuVisible(false);
+                    const session = xb.core.renderer?.xr?.getSession?.();
+                    if (session) session.end();
+                }
+            }
+
+            cycleXRLighting() {
+                const sliderLamp = document.getElementById('slider-lamp');
+                const sliderWarmth = document.getElementById('slider-warmth');
+                const current = Number(sliderLamp?.value || 120);
+                const next = current < 80 ? 120 : current < 160 ? 200 : 45;
+                if (sliderLamp) {
+                    sliderLamp.value = next;
+                    sliderLamp.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                if (sliderWarmth) {
+                    sliderWarmth.value = next >= 160 ? 95 : 65;
+                    sliderWarmth.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                if (this.candleLight) {
+                    this.candleLight.visible = next !== 45;
+                    if (this.candleFlame) this.candleFlame.visible = this.candleLight.visible;
+                }
+                this.playSparkleSound();
+            }
+
             onXRSelectStart(controller) {
                 this.currentInputSource = 'xr';
                 this.activeXRController = controller;
                 this.setRaycasterFromXRController(controller);
+
+                if (this.handleXRMenuSelection(controller)) return;
 
                 if (this.currentSceneState === 'viaje') {
                     if (this.activeTravelToy === 'plane' && this.handleSkySceneClick()) return;
@@ -500,7 +681,42 @@
                 this.activeXRController = null;
             }
 
+            isQuestXButtonPressed(source) {
+                if (!source || source.handedness !== 'left' || !source.gamepad) return false;
+                const buttons = source.gamepad.buttons || [];
+                return Boolean(buttons[4]?.pressed || buttons[4]?.touched);
+            }
+
+            updateXRButtonPolling() {
+                const session = xb.core.renderer?.xr?.getSession?.();
+                if (!session) return;
+
+                for (const source of session.inputSources) {
+                    const key = `${source.handedness || 'unknown'}-${source.profiles?.[0] || 'controller'}`;
+                    const xPressed = this.isQuestXButtonPressed(source);
+                    const previous = this.xrButtonStates.get(key) || {};
+                    if (xPressed && !previous.xPressed) {
+                        this.toggleXRMenu();
+                    }
+                    this.xrButtonStates.set(key, { xPressed });
+                }
+            }
+
             updateXRControllerInteraction() {
+                if (!this.isXRSessionActive) return;
+                this.updateXRButtonPolling();
+
+                if (this.xrMenuOpen) {
+                    this.xrControllers.forEach(controller => {
+                        const ray = controller.children.find(child => child.name === 'Meta Quest pointer ray');
+                        if (!ray) return;
+                        this.setRaycasterFromXRController(controller);
+                        const hoveringMenu = this.raycaster.intersectObjects(this.xrMenuItems, false).length > 0;
+                        ray.scale.z = hoveringMenu ? 1.35 : 2.4;
+                        ray.material.opacity = hoveringMenu ? 1 : 0.78;
+                    });
+                }
+
                 if (!this.activeXRController) return;
                 this.currentInputSource = 'xr';
                 this.setRaycasterFromXRController(this.activeXRController);
@@ -3008,6 +3224,8 @@
     </script>
   </body>
 </html>
+
+
 
 
 
