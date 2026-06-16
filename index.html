@@ -1,7 +1,8 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="es">
   <head>
     <title>El Taller del Juguetero 3D | WebXR</title>
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     
     <!-- CSS del Framework XR Blocks -->
@@ -175,6 +176,7 @@
         import * as THREE from 'three';
         import * as xb from 'xrblocks';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { VRButton } from 'three/addons/webxr/VRButton.js';
 
         // Inicializar iconos de Lucide
         lucide.createIcons();
@@ -187,7 +189,21 @@
             boat: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1barco.glb",
             truck: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1camion.glb",
             viajeEscena: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/main/barco-scene.glb",
-            palanca: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/main/palanca.glb"
+            planeScene: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1avion-scene.glb",
+            planeLarge: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1avion-grande.glb",
+            cloud: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1nube.glb",
+            pedestalPalanca: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1pedestal.glb",
+            palancaPalo: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1palanca.glb",
+            palancaBase: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1palanca-base.glb",
+            cofre: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1cofre.glb",
+            timonBase: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1timon-base.glb",
+            timon: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1timon.glb",
+            garfio: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1garfio.glb",
+            sombreroPirata: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1sombrero%20pirata.glb",
+            pistola: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1pistola.glb",
+            catalejo: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1catalejo.glb",
+            botella: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1botella.glb",
+            espada: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1espada.glb"
         };
 
         const toyTemplates = {
@@ -195,6 +211,56 @@
             plane: null,
             boat: null,
             truck: null
+        };
+
+        const sceneConfigs = {
+            boat: {
+                title: "¡Iniciando viaje!",
+                loadingText: "Levantando anclas, encendiendo luces de cubierta...",
+                readyText: "Cargando escena marítima e instrumentos de retorno...",
+                sceneUrl: modelUrls.viajeEscena,
+                fallback: "sea",
+                sound: "ship",
+                returnOffset: new THREE.Vector3(0.4, 0.9, -0.3),
+                returnRotationY: Math.PI / 4,
+                modelScale: 6.0,
+                cabinLightPosition: new THREE.Vector3(0, 1.2, 0)
+            },
+            train: {
+                title: "¡Rumbo a las vías!",
+                loadingText: "Preparando estación, rieles y señales...",
+                readyText: "Escenario del tren pendiente. Podés pegar su URL cuando lo tengas.",
+                sceneUrl: null,
+                fallback: "placeholder",
+                sound: "sparkle",
+                returnOffset: new THREE.Vector3(-0.4, 0.9, -0.3),
+                returnRotationY: -Math.PI / 5,
+                modelScale: 6.0
+            },
+            plane: {
+                title: "¡Entre las nubes!",
+                loadingText: "Tomando altura, abriendo cielo y corrientes de aire...",
+                readyText: "Cargando cielo enorme, nubes lentas y máquina de nubes...",
+                sceneUrl: null,
+                fallback: "sky",
+                sound: "sparkle",
+                returnOffset: new THREE.Vector3(0.05, 1.45, -1.12),
+                returnRotationY: Math.PI / 2,
+                modelScale: 15.0,
+                skyColor: 0x82cfff,
+                fogColor: 0xbfe9ff
+            },
+            truck: {
+                title: "¡Salida a la ruta!",
+                loadingText: "Trazando camino, carga y horizonte...",
+                readyText: "Escenario del camión pendiente. Podés pegar su URL cuando lo tengas.",
+                sceneUrl: null,
+                fallback: "placeholder",
+                sound: "sparkle",
+                returnOffset: new THREE.Vector3(0.45, 0.9, -0.55),
+                returnRotationY: Math.PI / 6,
+                modelScale: 6.0
+            }
         };
 
         const woodMaterials = {
@@ -220,9 +286,31 @@
                 this.viajeGroup = new THREE.Group();
                 this.currentSceneState = 'taller'; // 'taller' | 'viaje'
                 this.transitionTriggered = false;
+                this.activeTravelToy = null;
+                this.activeSceneConfig = null;
+                this.pedestalCenter = new THREE.Vector3(0, 0.94, -0.5);
+                this.skyClouds = [];
+                this.largePlaneModel = null;
+                this.skyFloorModel = null;
+                this.cloudMachine = null;
+                this.skyCoins = [];
+                this.dispensedClouds = [];
+                this.coinsCollected = 0;
+                this.boatInteractiveObjects = [];
+                this.boatMovableObjects = [];
+                this.boatSceneRoot = null;
+                this.boatWheelBase = null;
+                this.boatWheel = null;
+                this.boatWheelInstalled = false;
+                this.boatTurnTarget = 0;
+                this.selectedBoatObject = null;
+                this.defaultSceneBackground = null;
+                this.defaultSceneFog = null;
 
                 // Animaciones y modelo de palanca
                 this.leverModel = null;
+                this.leverMountPanel = null;
+                this.leverPedestal = null;
                 this.leverHandle = null; // El nodo rotatorio de la palanca
                 this.leverTargetRotation = 0;
                 this.leverCurrentRotation = 0;
@@ -249,6 +337,8 @@
                 // Niebla y fondo marrón muy cálido
                 xb.core.scene.background = new THREE.Color(0x0e0804);
                 xb.core.scene.fog = new THREE.FogExp2(0x0e0804, 0.04);
+                this.defaultSceneBackground = xb.core.scene.background.clone();
+                this.defaultSceneFog = xb.core.scene.fog;
                 
                 // Posicionar cámara a 1.65 metros de altura realista
                 xb.core.camera.position.set(0, 1.65, 2.3);
@@ -271,8 +361,203 @@
                 window.addEventListener('pointerdown', (e) => this.onPointerDown(e), false);
                 window.addEventListener('pointermove', (e) => this.onPointerMove(e), false);
                 window.addEventListener('pointerup', (e) => this.onPointerUp(e), false);
+                this.setupQuestXR();
             }
 
+            setupQuestXR() {
+                const renderer = xb.core.renderer;
+                if (!renderer || !renderer.xr) {
+                    console.warn('WebXR no disponible: no se encontró el renderer XR de Three.js.');
+                    return;
+                }
+
+                renderer.xr.enabled = true;
+                if (renderer.xr.setReferenceSpaceType) {
+                    renderer.xr.setReferenceSpaceType('local-floor');
+                }
+
+                const vrButton = VRButton.createButton(renderer);
+                vrButton.id = 'btn-enter-vr';
+                vrButton.style.position = 'fixed';
+                vrButton.style.left = '50%';
+                vrButton.style.bottom = '18px';
+                vrButton.style.transform = 'translateX(-50%)';
+                vrButton.style.zIndex = '40';
+                vrButton.style.border = '1px solid rgba(245, 158, 11, 0.7)';
+                vrButton.style.borderRadius = '12px';
+                vrButton.style.background = 'rgba(69, 26, 3, 0.92)';
+                vrButton.style.color = '#fcd34d';
+                vrButton.style.fontFamily = 'Quicksand, sans-serif';
+                vrButton.style.fontWeight = '700';
+                document.body.appendChild(vrButton);
+
+                renderer.xr.addEventListener('sessionstart', () => {
+                    this.isXRSessionActive = true;
+                    document.querySelector('header')?.classList.add('opacity-0', 'pointer-events-none');
+                    document.querySelector('footer')?.classList.add('opacity-0', 'pointer-events-none');
+                });
+
+                renderer.xr.addEventListener('sessionend', () => {
+                    this.isXRSessionActive = false;
+                    this.activeXRController = null;
+                    this.selectedObject = null;
+                    this.selectedBoatObject = null;
+                    if (this.currentSceneState === 'taller') {
+                        document.querySelector('header')?.classList.remove('opacity-0', 'pointer-events-none');
+                        document.querySelector('footer')?.classList.remove('opacity-0', 'pointer-events-none');
+                    }
+                });
+
+                for (let i = 0; i < 2; i++) {
+                    const controller = renderer.xr.getController(i);
+                    controller.userData.index = i;
+                    controller.addEventListener('selectstart', () => this.onXRSelectStart(controller));
+                    controller.addEventListener('selectend', () => this.onXRSelectEnd(controller));
+
+                    const ray = this.createXRControllerRay();
+                    controller.add(ray);
+                    this.xrControllers.push(controller);
+                    this.xrControllerRays.push(ray);
+                    xb.core.scene.add(controller);
+                }
+            }
+
+            createXRControllerRay() {
+                const geometry = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(0, 0, 0),
+                    new THREE.Vector3(0, 0, -1)
+                ]);
+                const material = new THREE.LineBasicMaterial({
+                    color: 0xffd166,
+                    transparent: true,
+                    opacity: 0.85
+                });
+                const line = new THREE.Line(geometry, material);
+                line.name = 'Meta Quest pointer ray';
+                line.scale.z = 1.8;
+                return line;
+            }
+
+            setRaycasterFromXRController(controller) {
+                this.xrTempMatrix.identity().extractRotation(controller.matrixWorld);
+                this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+                this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.xrTempMatrix);
+            }
+
+            onXRSelectStart(controller) {
+                this.currentInputSource = 'xr';
+                this.activeXRController = controller;
+                this.setRaycasterFromXRController(controller);
+
+                if (this.currentSceneState === 'viaje') {
+                    if (this.activeTravelToy === 'plane' && this.handleSkySceneClick()) return;
+                    if (this.activeTravelToy === 'boat' && this.handleBoatScenePointerDown()) return;
+
+                    if (this.leverModel) {
+                        const intersectsLever = this.raycaster.intersectObject(this.leverModel, true);
+                        if (intersectsLever.length > 0) {
+                            this.leverTargetRotation = Math.PI / 2;
+                            this.playLeverClickSound();
+                            setTimeout(() => this.returnToTaller(), 400);
+                        }
+                    }
+                    return;
+                }
+
+                const intersects = this.raycaster.intersectObjects(this.objects, true);
+                if (intersects.length === 0) return;
+
+                let target = intersects[0].object;
+                while (target.parent && !this.objects.includes(target)) {
+                    target = target.parent;
+                }
+
+                if (!this.objects.includes(target)) return;
+                this.selectedObject = target;
+                this.selectedObject.userData.isFlying = false;
+
+                const currentY = this.selectedObject.position.y;
+                this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, currentY, 0));
+                if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
+                    this.offset.copy(this.selectedObject.position).sub(this.intersectionPoint);
+                }
+                this.selectedObject.position.y += 0.08;
+                this.playWobbleSound();
+            }
+
+            onXRSelectEnd(controller) {
+                if (this.activeXRController !== controller) return;
+
+                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'boat') {
+                    this.handleBoatScenePointerUp();
+                    this.activeXRController = null;
+                    return;
+                }
+
+                if (this.currentSceneState === 'taller') {
+                    this.releaseSelectedWorkshopToy();
+                }
+                this.activeXRController = null;
+            }
+
+            updateXRControllerInteraction() {
+                if (!this.activeXRController) return;
+                this.currentInputSource = 'xr';
+                this.setRaycasterFromXRController(this.activeXRController);
+
+                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'boat' && this.selectedBoatObject) {
+                    this.handleBoatScenePointerMove();
+                    return;
+                }
+
+                if (this.currentSceneState !== 'taller' || !this.selectedObject) return;
+                const targetY = Math.max(0.9, Math.min(1.8, this.selectedObject.position.y));
+                this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, targetY, 0));
+                if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
+                    const targetX = this.intersectionPoint.x + this.offset.x;
+                    const targetZ = this.intersectionPoint.z + this.offset.z;
+                    const distanceToPedestal = Math.sqrt(targetX * targetX + (targetZ + 0.5) * (targetZ + 0.5));
+
+                    if (distanceToPedestal < 0.18) {
+                        this.selectedObject.position.set(0, 0.94, -0.5);
+                    } else {
+                        this.selectedObject.position.set(
+                            Math.max(-1.2, Math.min(1.2, targetX)),
+                            targetY,
+                            Math.max(-1.15, Math.min(0.12, targetZ))
+                        );
+                    }
+                }
+            }
+
+            releaseSelectedWorkshopToy() {
+                if (!this.selectedObject) return;
+                const currentY = this.selectedObject.position.y;
+                const type = this.selectedObject.userData.type;
+                const posX = this.selectedObject.position.x;
+                const posZ = this.selectedObject.position.z;
+                const isOnPedestal = Math.sqrt(posX * posX + (posZ + 0.5) * (posZ + 0.5)) < 0.15 && currentY < 1.3;
+
+                if (isOnPedestal) {
+                    this.selectedObject.position.set(0, 0.94, -0.5);
+                    this.selectedObject.userData.isFlying = false;
+                    this.playClinkSound();
+                    if (sceneConfigs[type] && !this.transitionTriggered) {
+                        this.triggerTravelTransition(type);
+                    }
+                } else if (currentY >= 1.7 && type === 'plane') {
+                    this.selectedObject.userData.isFlying = true;
+                    this.selectedObject.userData.flightAngle = Math.atan2(posZ + 0.5, posX);
+                    this.playSparkleSound();
+                } else if (currentY >= 1.35 && currentY < 1.7) {
+                    this.selectedObject.position.y = 1.45;
+                    this.playClinkSound();
+                } else {
+                    this.selectedObject.position.y = 0.9;
+                    this.playClinkSound();
+                }
+                this.selectedObject = null;
+            }
             setupLighting() {
                 // Luz de ambiente íntima
                 this.ambientLight = new THREE.AmbientLight(0x3d2110, 0.45);
@@ -648,22 +933,69 @@
                 // --- ESTANTE DE PARED RÚSTICO ---
                 const shelfGroup = new THREE.Group();
                 const shelfMesh = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.04, 0.28), new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.85 }));
-                shelfMesh.position.set(0, 1.43, -1.65); 
+                shelfMesh.position.set(0, 1.38, -1.12); 
                 shelfMesh.castShadow = true;
                 shelfMesh.receiveShadow = true;
                 shelfGroup.add(shelfMesh);
 
                 const leftBracket = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.2), brassMat);
-                leftBracket.position.set(-0.6, 1.34, -1.7);
+                leftBracket.position.set(-0.6, 1.29, -1.17);
                 leftBracket.castShadow = true;
                 shelfGroup.add(leftBracket);
 
                 const rightBracket = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.2), brassMat);
-                rightBracket.position.set(0.6, 1.34, -1.7);
+                rightBracket.position.set(0.6, 1.29, -1.17);
                 rightBracket.castShadow = true;
                 shelfGroup.add(rightBracket);
 
                 this.tallerGroup.add(shelfGroup);
+
+                // --- REPISA BAJA PARA JUGUETES ---
+                const lowerShelfGroup = new THREE.Group();
+                const lowerShelf = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.35, 0.045, 0.24),
+                    new THREE.MeshStandardMaterial({ color: 0x4a2a18, roughness: 0.85 })
+                );
+                lowerShelf.position.set(-0.92, 1.05, -1.02);
+                lowerShelf.castShadow = true;
+                lowerShelf.receiveShadow = true;
+                lowerShelfGroup.add(lowerShelf);
+
+                const lowerBracketA = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.16, 0.18), brassMat);
+                lowerBracketA.position.set(-1.35, 0.97, -1.04);
+                lowerBracketA.castShadow = true;
+                lowerShelfGroup.add(lowerBracketA);
+
+                const lowerBracketB = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.16, 0.18), brassMat);
+                lowerBracketB.position.set(-0.49, 0.97, -1.04);
+                lowerBracketB.castShadow = true;
+                lowerShelfGroup.add(lowerBracketB);
+
+                this.tallerGroup.add(lowerShelfGroup);
+
+                // --- SOPORTE LATERAL / CAJÓN DE EXHIBICIÓN ---
+                const sideDisplay = new THREE.Group();
+                const displayTop = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.7, 0.05, 0.55),
+                    new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.85 })
+                );
+                displayTop.position.set(1.18, 0.64, -0.98);
+                displayTop.rotation.y = -0.08;
+                displayTop.castShadow = true;
+                displayTop.receiveShadow = true;
+                sideDisplay.add(displayTop);
+
+                const displayBase = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.62, 0.48, 0.48),
+                    new THREE.MeshStandardMaterial({ color: 0x332015, roughness: 0.9 })
+                );
+                displayBase.position.set(1.18, 0.36, -0.98);
+                displayBase.rotation.y = -0.08;
+                displayBase.castShadow = true;
+                displayBase.receiveShadow = true;
+                sideDisplay.add(displayBase);
+
+                this.tallerGroup.add(sideDisplay);
             }
 
             createDustMotes() {
@@ -816,13 +1148,69 @@
                 } else {
                     this.playClinkSound();
                 }
+
+                return newToy;
+            }
+
+            spawnMovableCrate(x, z, y, scale = 1, rotationY = 0) {
+                const crateGroup = new THREE.Group();
+                crateGroup.userData = {
+                    type: 'crate',
+                    isFlying: false,
+                    uuid: THREE.MathUtils.generateUUID()
+                };
+
+                const crateMat = new THREE.MeshStandardMaterial({ color: 0x6b4428, roughness: 0.88 });
+                const trimMat = new THREE.MeshStandardMaterial({ color: 0x2f1d12, roughness: 0.8 });
+
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.22), crateMat);
+                body.position.y = 0.08;
+                body.castShadow = true;
+                body.receiveShadow = true;
+                crateGroup.add(body);
+
+                const bandGeoX = new THREE.BoxGeometry(0.24, 0.025, 0.03);
+                const bandGeoZ = new THREE.BoxGeometry(0.03, 0.025, 0.24);
+                [-0.07, 0.07].forEach(offset => {
+                    const bandX = new THREE.Mesh(bandGeoX, trimMat);
+                    bandX.position.set(0, 0.16, offset);
+                    bandX.castShadow = true;
+                    crateGroup.add(bandX);
+
+                    const bandZ = new THREE.Mesh(bandGeoZ, trimMat);
+                    bandZ.position.set(offset, 0.16, 0);
+                    bandZ.castShadow = true;
+                    crateGroup.add(bandZ);
+                });
+
+                crateGroup.position.set(x, y, z);
+                crateGroup.rotation.y = rotationY;
+                crateGroup.scale.set(scale, scale, scale);
+                this.tallerGroup.add(crateGroup);
+                this.objects.push(crateGroup);
+
+                return crateGroup;
             }
 
             spawnInitialToys() {
-                this.spawnToy('train', 0, -0.5, 0.94);
-                this.spawnToy('truck', -0.4, -0.3, 0.9);
-                this.spawnToy('boat', 0.2, -1.65, 1.45); 
-                this.spawnToy('plane', 0, -0.5, 1.8);    
+                const train = this.spawnToy('train', -0.82, -1.02, 1.10);
+                if (train) train.rotation.y = -Math.PI / 8;
+
+                const boat = this.spawnToy('boat', 0.55, -1.12, 1.43);
+                if (boat) boat.rotation.y = Math.PI / 7;
+
+                const truck = this.spawnToy('truck', 1.18, -0.98, 0.69);
+                if (truck) truck.rotation.y = -Math.PI / 5;
+
+                const plane = this.spawnToy('plane', 0.05, -1.12, 1.43);
+                if (plane) {
+                    plane.userData.flightAngle = Math.PI * 1.1;
+                    plane.rotation.y = Math.PI / 2;
+                }
+
+                this.spawnMovableCrate(-1.22, -1.02, 1.10, 0.9, Math.PI / 8);
+                this.spawnMovableCrate(-0.55, 0.02, 0.04, 1.0, -Math.PI / 7);
+                this.spawnMovableCrate(0.72, 0.08, 0.04, 0.85, Math.PI / 5);
             }
 
             clearToys() {
@@ -838,6 +1226,8 @@
 
             // --- FÍSICA E INTERACCIÓN DE ARRASTRE DE JUGUETES Y PALANCA ---
             onPointerDown(event) {
+                
+                this.currentInputSource = 'pointer';
                 if (event.button !== 0 && event.pointerType === 'mouse') return;
 
                 this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -847,11 +1237,19 @@
 
                 // Lógica de Raycasting en el Modo de Viaje (Detectar clic en la Palanca)
                 if (this.currentSceneState === 'viaje') {
+                    if (this.activeTravelToy === 'plane' && this.handleSkySceneClick()) {
+                        return;
+                    }
+
+                    if (this.activeTravelToy === 'boat' && this.handleBoatScenePointerDown()) {
+                        return;
+                    }
+
                     if (this.leverModel) {
                         const intersectsLever = this.raycaster.intersectObject(this.leverModel, true);
                         if (intersectsLever.length > 0) {
                             // Jalar palanca: activar rotación de la manija
-                            this.leverTargetRotation = Math.PI / 3; // Rotar hacia abajo
+                            this.leverTargetRotation = Math.PI / 2; // de -45° arriba a +45° abajo
                             this.playLeverClickSound();
                             
                             // Retornar al taller después de la animación de jalar
@@ -890,9 +1288,17 @@
             }
 
             onPointerMove(event) {
-                if (this.currentSceneState !== 'taller') return;
+                
+                this.currentInputSource = 'pointer';
                 this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
                 this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'boat') {
+                    this.handleBoatScenePointerMove();
+                    return;
+                }
+
+                if (this.currentSceneState !== 'taller') return;
 
                 if (this.selectedObject) {
                     this.raycaster.setFromCamera(this.mouse, xb.core.camera);
@@ -917,8 +1323,8 @@
                                 Math.max(-1.3, Math.min(0.3, targetZ))
                             );
                         } else if (targetY === 1.45) {
-                            this.selectedObject.position.x = Math.max(-0.8, Math.min(0.8, targetX));
-                            this.selectedObject.position.z = Math.max(-1.75, Math.min(-1.55, targetZ));
+                            this.selectedObject.position.x = Math.max(-1.25, Math.min(0.9, targetX));
+                            this.selectedObject.position.z = Math.max(-1.22, Math.min(-0.88, targetZ));
                             this.selectedObject.position.y = 1.45;
                         } else {
                             const distanceToPedestal = Math.sqrt(targetX*targetX + (targetZ - (-0.5))*(targetZ - (-0.5)));
@@ -927,9 +1333,9 @@
                                 this.selectedObject.position.set(0, 0.94, -0.5);
                             } else {
                                 this.selectedObject.position.set(
-                                    Math.max(-1.0, Math.min(1.0, targetX)),
+                                    Math.max(-1.2, Math.min(1.2, targetX)),
                                     0.9,
-                                    Math.max(-0.95, Math.min(-0.05, targetZ))
+                                    Math.max(-1.15, Math.min(0.12, targetZ))
                                 );
                             }
                         }
@@ -938,20 +1344,32 @@
             }
 
             onPointerUp(event) {
+                
+                this.currentInputSource = 'pointer';
+                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'boat') {
+                    this.handleBoatScenePointerUp();
+                    return;
+                }
+
                 if (this.currentSceneState !== 'taller') return;
                 if (this.selectedObject) {
                     const currentY = this.selectedObject.position.y;
                     const type = this.selectedObject.userData.type;
                     const posX = this.selectedObject.position.x;
                     const posZ = this.selectedObject.position.z;
+                    const isOnPedestal = Math.sqrt(posX*posX + (posZ - (-0.5))*(posZ - (-0.5))) < 0.15 && currentY < 1.3;
 
-                    if (currentY >= 1.7 && type === 'plane') {
+                    if (isOnPedestal) {
+                        this.selectedObject.position.set(0, 0.94, -0.5);
+                        this.selectedObject.userData.isFlying = false;
+                        this.playClinkSound();
+                        if (sceneConfigs[type] && !this.transitionTriggered) {
+                            this.triggerTravelTransition(type);
+                        }
+                    } else if (currentY >= 1.7 && type === 'plane') {
                         this.selectedObject.userData.isFlying = true;
                         this.selectedObject.userData.flightAngle = Math.atan2(posZ - (-0.5), posX);
                         this.playSparkleSound();
-                    } else if (Math.sqrt(posX*posX + (posZ - (-0.5))*(posZ - (-0.5))) < 0.15 && currentY < 1.3) {
-                        this.selectedObject.position.set(0, 0.94, -0.5);
-                        this.playClinkSound();
                     } else if (currentY >= 1.35 && currentY < 1.7) {
                         this.selectedObject.position.y = 1.45;
                         this.playClinkSound();
@@ -963,132 +1381,440 @@
                 this.selectedObject = null;
             }
 
-            // --- GESTIÓN DE TRANSICIÓN Y CARGA DE NUEVA ESCENA ---
-            triggerTravelTransition() {
+            handleBoatScenePointerDown() {
+                if (this.boatWheelInstalled && this.boatWheel) {
+                    const wheelHit = this.raycaster.intersectObject(this.boatWheel, true);
+                    if (wheelHit.length > 0) {
+                        this.boatTurnTarget += Math.PI / 5;
+                        this.boatWheel.rotation.z -= Math.PI / 5;
+                        this.playWobbleSound();
+                        return true;
+                    }
+                }
+
+                if (!this.boatMovableObjects.length) return false;
+                const intersects = this.raycaster.intersectObjects(this.boatMovableObjects, true);
+                if (intersects.length === 0) return false;
+
+                let target = intersects[0].object;
+                while (target.parent && !this.boatMovableObjects.includes(target)) {
+                    target = target.parent;
+                }
+
+                if (!this.boatMovableObjects.includes(target)) return false;
+                this.selectedBoatObject = target;
+
+                const currentY = this.selectedBoatObject.position.y;
+                this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, currentY, 0));
+                if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
+                    this.offset.copy(this.selectedBoatObject.position).sub(this.intersectionPoint);
+                }
+                this.selectedBoatObject.position.y += 0.05;
+                this.playWobbleSound();
+                return true;
+            }
+
+            handleBoatScenePointerMove() {
+                if (!this.selectedBoatObject) return;
+                if (this.currentInputSource !== 'xr') {
+                    this.raycaster.setFromCamera(this.mouse, xb.core.camera);
+                }
+                const targetY = this.selectedBoatObject.userData.type === 'boatWheel' ? 0.42 : Math.max(0.26, this.selectedBoatObject.position.y);
+                this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, targetY, 0));
+
+                if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
+                    this.selectedBoatObject.position.set(
+                        Math.max(-1.15, Math.min(1.15, this.intersectionPoint.x + this.offset.x)),
+                        targetY,
+                        Math.max(-0.95, Math.min(0.9, this.intersectionPoint.z + this.offset.z))
+                    );
+                }
+            }
+
+            handleBoatScenePointerUp() {
+                if (!this.selectedBoatObject) return;
+                const obj = this.selectedBoatObject;
+
+                if (obj.userData.type === 'boatWheel' && this.boatWheelBase) {
+                    const basePos = this.boatWheelBase.position.clone();
+                    const snapPos = new THREE.Vector3(basePos.x, 0.56, basePos.z + 0.08);
+                    if (obj.position.distanceTo(snapPos) < 0.38) {
+                        obj.position.copy(snapPos);
+                        obj.rotation.set(0, Math.PI, 0);
+                        obj.userData.installed = true;
+                        this.boatWheelInstalled = true;
+                        this.playClinkSound();
+                        this.selectedBoatObject = null;
+                        return;
+                    }
+                }
+
+                obj.position.y = obj.userData.type === 'boatWheel' ? 0.42 : Math.max(0.26, obj.position.y - 0.05);
+                this.playClinkSound();
+                this.selectedBoatObject = null;
+            }
+
+            getToyOnPedestal() {
+                return this.objects.find(obj => {
+                    if (obj.userData.isFlying) return false;
+                    if (!sceneConfigs[obj.userData.type]) return false;
+                    return obj.position.distanceTo(this.pedestalCenter) < 0.08;
+                }) || null;
+            }
+
+            setPedestalState(activeToy) {
+                if (activeToy) {
+                    this.pedestalWoodMat.color.setHex(0x1b5e20);
+                    this.pedestalMetalMat.color.setHex(0x4caf50);
+                    this.pedestalMetalMat.emissive.setHex(0x0e3a0e);
+                } else {
+                    this.pedestalWoodMat.color.setHex(0x4a2a18);
+                    this.pedestalMetalMat.color.setHex(0xd4af37);
+                    this.pedestalMetalMat.emissive.setHex(0x000000);
+                }
+            }
+
+            clearTravelScene() {
+                const keep = new Set([this.viajeLightAmbient, this.viajeLightSun, this.boatCabinLight]);
+                [...this.viajeGroup.children].forEach(child => {
+                    if (!keep.has(child)) {
+                        this.viajeGroup.remove(child);
+                    }
+                });
+
+                this.leverModel = null;
+                this.leverMountPanel = null;
+                this.leverPedestal = null;
+                this.leverHandle = null;
+                this.seaMesh = null;
+                this.seaBoat = null;
+                this.boatInteractiveObjects = [];
+                this.boatMovableObjects = [];
+                this.boatSceneRoot = null;
+                this.boatWheelBase = null;
+                this.boatWheel = null;
+                this.boatWheelInstalled = false;
+                this.boatTurnTarget = 0;
+                this.selectedBoatObject = null;
+                this.skyClouds = [];
+                this.largePlaneModel = null;
+                this.cloudMachine = null;
+                this.skyCoins = [];
+                this.dispensedClouds = [];
+                this.coinsCollected = 0;
+                this.skyFloorModel = null;
+            }
+
+            // --- GESTION DE TRANSICION Y CARGA DE ESCENAS POR JUGUETE ---
+            triggerTravelTransition(toyType = 'boat') {
+                const config = sceneConfigs[toyType] || sceneConfigs.boat;
                 this.currentSceneState = 'viaje';
                 this.transitionTriggered = true;
+                this.activeTravelToy = toyType;
+                this.activeSceneConfig = config;
 
                 const overlay = document.getElementById('transition-overlay');
+                const titleText = document.getElementById('transition-title');
                 const statusText = document.getElementById('transition-status');
                 
+                titleText.innerText = config.title;
+                statusText.innerText = config.loadingText;
                 overlay.classList.remove('pointer-events-none', 'opacity-0');
                 overlay.classList.add('opacity-100');
 
-                this.playShipHornSound();
+                if (config.sound === 'ship') {
+                    this.playShipHornSound();
+                } else {
+                    this.playSparkleSound();
+                }
 
                 setTimeout(() => {
                     this.tallerGroup.visible = false;
                     this.viajeGroup.visible = true;
+                    this.clearTravelScene();
 
-                    // Apagar luces del taller
                     this.lampLight.intensity = 0;
                     this.candleLight.intensity = 0;
+                    this.applyTravelAtmosphere(config);
 
-                    // Ocultar interfaces 2D secundarias
                     document.querySelector('footer').classList.add('opacity-0', 'pointer-events-none');
                     document.querySelector('header').classList.add('opacity-0', 'pointer-events-none');
                     
-                    statusText.innerText = "Cargando escena marítima e instrumentos de retorno...";
+                    statusText.innerText = config.readyText;
 
-                    // Cargar la Palanca de Retorno Interactiva
                     this.loadLeverModel();
 
-                    // Cargar el escenario marítimo custom
-                    const loader = new GLTFLoader();
-                    loader.load(modelUrls.viajeEscena, (gltf) => {
-                        // Limpiar escena de viaje antigua excepto luces del barco
-                        while(this.viajeGroup.children.length > 3) { 
-                            this.viajeGroup.remove(this.viajeGroup.children[3]);
-                        }
-
-                        const extScene = gltf.scene;
-                        extScene.traverse(child => {
-                            if (child.isMesh) {
-                                child.castShadow = true;
-                                child.receiveShadow = true;
-                            }
-                        });
-
-                        const box = new THREE.Box3().setFromObject(extScene);
-                        const size = box.getSize(new THREE.Vector3());
-                        const maxDim = Math.max(size.x, size.y, size.z);
-                        const scaleFactor = 6.0 / maxDim;
-                        extScene.scale.set(scaleFactor, scaleFactor, scaleFactor);
-                        
-                        const center = box.getCenter(new THREE.Vector3());
-                        extScene.position.set(-center.x * scaleFactor, -box.min.y * scaleFactor, -center.z * scaleFactor);
-
-                        this.viajeGroup.add(extScene);
-                        
-                        // Añadir punto de luz flotante dentro del camarote de barco custom
-                        this.boatCabinLight.position.set(0, 1.2, 0);
-
-                        this.finalizeTransition();
-
-                    }, undefined, (err) => {
-                        console.warn("Fallo carga de escena de Github. Iniciando escenario de respaldo procedural...", err);
+                    if (config.sceneUrl) {
+                        this.loadConfiguredScene(config);
+                    } else if (config.fallback === 'sea') {
                         this.buildProceduralSeaScene();
                         this.finalizeTransition();
-                    });
+                    } else if (config.fallback === 'sky') {
+                        this.buildProceduralSkyScene();
+                        this.loadPlaneSceneExtras();
+                        this.finalizeTransition();
+                    } else {
+                        this.buildPlaceholderScene(toyType, config);
+                        this.finalizeTransition();
+                    }
 
                 }, 1500);
             }
 
-            // Cargar e instalar el Modelo de la Palanca GLTF en la pared
-            loadLeverModel() {
+            loadConfiguredScene(config) {
                 const loader = new GLTFLoader();
-                loader.load(modelUrls.palanca, (gltf) => {
-                    if (this.leverModel) {
-                        this.viajeGroup.remove(this.leverModel);
-                    }
-
-                    this.leverModel = gltf.scene;
-
-                    // Crear panel de soporte de pared rústica para montar la palanca
-                    const mountPanel = new THREE.Mesh(
-                        new THREE.BoxGeometry(0.35, 0.5, 0.04),
-                        new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.9 })
-                    );
-                    mountPanel.position.set(-1.1, 1.3, -0.98);
-                    mountPanel.rotation.y = Math.PI / 4;
-                    mountPanel.castShadow = true; mountPanel.receiveShadow = true;
-                    this.viajeGroup.add(mountPanel);
-
-                    // Escalar y posicionar palanca de retorno de cara a la cámara
-                    this.leverModel.scale.set(0.2, 0.2, 0.2);
-                    this.leverModel.position.set(-1.1, 1.3, -0.95);
-                    this.leverModel.rotation.y = Math.PI / 4;
-                    this.leverModel.rotation.x = 0;
-
-                    this.leverModel.traverse(child => {
+                loader.load(config.sceneUrl, (gltf) => {
+                    const extScene = gltf.scene;
+                    extScene.traverse(child => {
                         if (child.isMesh) {
                             child.castShadow = true;
-                            // Encontrar el nodo dinámico de la manija de palanca para animar rotación
-                            if (child.name.toLowerCase().includes("manija") || child.name.toLowerCase().includes("lever") || child.name.toLowerCase().includes("handle") || child.name.toLowerCase().includes("palanca")) {
-                                this.leverHandle = child;
-                            }
+                            child.receiveShadow = true;
                         }
                     });
 
-                    // Si no se encuentra la pieza por nombre, animamos todo el modelo pivotando ligeramente
-                    if (!this.leverHandle) {
-                        this.leverHandle = this.leverModel;
+                    const box = new THREE.Box3().setFromObject(extScene);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scaleFactor = (config.modelScale || 6.0) / maxDim;
+                    extScene.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                    
+                    const center = box.getCenter(new THREE.Vector3());
+                    extScene.position.set(-center.x * scaleFactor, -box.min.y * scaleFactor, -center.z * scaleFactor);
+
+                    if (this.activeTravelToy === 'boat') {
+                        this.boatSceneRoot = new THREE.Group();
+                        this.boatSceneRoot.name = 'barco-interactivo';
+                        this.boatSceneRoot.add(extScene);
+                        this.viajeGroup.add(this.boatSceneRoot);
+                        this.decorateBoatScene();
+                    } else {
+                        this.viajeGroup.add(extScene);
+                    }
+                    
+                    if (config.cabinLightPosition) {
+                        this.boatCabinLight.position.copy(config.cabinLightPosition);
                     }
 
-                    // Forzar rotación inicial de la manija (hacia arriba)
-                    this.leverTargetRotation = 0;
-                    this.leverCurrentRotation = 0;
-                    this.leverHandle.rotation.x = -Math.PI / 4;
+                    if (this.activeTravelToy === 'plane') {
+                        this.loadPlaneSceneExtras();
+                    }
 
-                    this.viajeGroup.add(this.leverModel);
+                    this.finalizeTransition();
+
+                }, undefined, (err) => {
+                    console.warn("Fallo carga de escena de Github. Iniciando escenario de respaldo.", err);
+                    if (config.fallback === 'sea') {
+                        this.buildProceduralSeaScene();
+                    } else if (config.fallback === 'sky') {
+                        this.buildProceduralSkyScene();
+                        this.loadPlaneSceneExtras();
+                    } else {
+                        this.buildPlaceholderScene(this.activeTravelToy, config);
+                    }
+                    this.finalizeTransition();
                 });
             }
 
-            buildProceduralSeaScene() {
-                while(this.viajeGroup.children.length > 3) {
-                    this.viajeGroup.remove(this.viajeGroup.children[3]);
+            applyTravelAtmosphere(config) {
+                if (config.skyColor) {
+                    xb.core.scene.background = new THREE.Color(config.skyColor);
+                    xb.core.scene.fog = new THREE.FogExp2(config.fogColor || config.skyColor, 0.018);
+                    this.viajeLightAmbient.color.setHex(0xdff6ff);
+                    this.viajeLightAmbient.intensity = 1.35;
+                    this.viajeLightSun.color.setHex(0xfff4c8);
+                    this.viajeLightSun.intensity = 2.4;
+                    this.viajeLightSun.position.set(-4, 9, 3);
+                    this.boatCabinLight.intensity = 0.0;
+                } else {
+                    this.viajeLightAmbient.color.setHex(0x132238);
+                    this.viajeLightAmbient.intensity = 0.5;
+                    this.viajeLightSun.color.setHex(0x5588aa);
+                    this.viajeLightSun.intensity = 0.9;
+                    this.viajeLightSun.position.set(-5, 12, 5);
+                    this.boatCabinLight.intensity = 2.5;
+                }
+            }
+            // Cargar e instalar el Modelo de la Palanca GLTF en la pared
+            loadLeverModel() {
+                const loader = new GLTFLoader();
+                if (this.leverModel) {
+                    this.viajeGroup.remove(this.leverModel);
                 }
 
+                this.leverModel = new THREE.Group();
+                this.leverModel.name = "palanca-retorno";
+                if (this.activeTravelToy === 'plane') {
+                    this.leverModel.position.set(-0.92, 0.6, -0.25);
+                    this.leverModel.rotation.y = Math.PI / 6;
+                    this.leverModel.scale.set(0.085, 0.085, 0.085);
+                } else {
+                    this.leverModel.position.set(-1.15, 1.28, -0.95);
+                    this.leverModel.rotation.y = Math.PI / 4;
+                    this.leverModel.scale.set(0.22, 0.22, 0.22);
+                }
+                this.leverHandle = null;
+                const leverGroup = this.leverModel;
+
+                const markMeshes = (root) => {
+                    root.traverse(child => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                };
+
+                const addFallbackLever = () => {
+                    if (this.leverModel !== leverGroup) return;
+                    leverGroup.clear();
+
+                    const baseMat = new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.85 });
+                    const metalMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.35, metalness: 0.8 });
+                    const woodMat = new THREE.MeshStandardMaterial({ color: 0x7b4a25, roughness: 0.7 });
+
+                    const base = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.25, 0.22), baseMat);
+                    base.position.set(0, 0, 0);
+                    base.castShadow = true;
+                    base.receiveShadow = true;
+                    leverGroup.add(base);
+
+                    const pivot = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), metalMat);
+                    pivot.position.set(0, 0, 0.16);
+                    pivot.castShadow = true;
+                    leverGroup.add(pivot);
+
+                    this.leverHandle = new THREE.Group();
+                    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 1.2, 14), woodMat);
+                    stick.position.set(0, 0.55, 0.2);
+                    stick.rotation.z = -0.18;
+                    stick.castShadow = true;
+                    this.leverHandle.add(stick);
+
+                    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), metalMat);
+                    knob.position.set(0, 1.15, 0.2);
+                    knob.castShadow = true;
+                    this.leverHandle.add(knob);
+
+                    leverGroup.add(this.leverHandle);
+                    if (this.activeTravelToy === 'plane') {
+                        this.addPlaneLeverMount();
+                    }
+                    this.resetLeverPose();
+                };
+
+                const loadPart = (url) => new Promise((resolve, reject) => {
+                    loader.load(url, (gltf) => resolve(gltf.scene), undefined, reject);
+                });
+
+                Promise.all([
+                    loadPart(modelUrls.palancaBase),
+                    loadPart(modelUrls.palancaPalo)
+                ]).then(([baseModel, handleModel]) => {
+                    if (this.leverModel !== leverGroup) return;
+                    markMeshes(baseModel);
+                    markMeshes(handleModel);
+
+                    baseModel.name = "palanca-base";
+                    handleModel.name = "palanca-palo";
+
+                    baseModel.position.set(0, 0, 0);
+                    handleModel.position.set(0, 0, 0.18);
+
+                    leverGroup.add(baseModel);
+                    this.leverHandle = handleModel;
+                    leverGroup.add(this.leverHandle);
+                    if (this.activeTravelToy === 'plane') {
+                        this.addPlaneLeverMount();
+                    }
+                    this.resetLeverPose();
+                }).catch((err) => {
+                    console.warn("No se pudieron cargar las piezas de la palanca. Usando palanca de respaldo.", err);
+                    addFallbackLever();
+                });
+
+                this.viajeGroup.add(this.leverModel);
+            }
+
+            addPlaneLeverMount() {
+                if (!this.leverModel) return;
+                if (this.leverPedestal) {
+                    this.leverPedestal.position.set(-1.25, 0, -0.25);
+                    return;
+                }
+
+                const loader = new GLTFLoader();
+                const fallbackPedestal = () => {
+                    const pedestal = new THREE.Group();
+                    pedestal.name = 'pedestal-palanca-respaldo';
+
+                    const woodMat = new THREE.MeshStandardMaterial({ color: 0x6b3f22, roughness: 0.82 });
+                    const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.9 });
+
+                    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 1.1, 10), woodMat);
+                    post.position.y = 0.55;
+                    post.castShadow = true;
+                    post.receiveShadow = true;
+                    pedestal.add(post);
+
+                    const top = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.1, 0.34), darkWoodMat);
+                    top.position.y = 1.1;
+                    top.castShadow = true;
+                    top.receiveShadow = true;
+                    pedestal.add(top);
+
+                    const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.42), darkWoodMat);
+                    base.position.y = 0.06;
+                    base.castShadow = true;
+                    base.receiveShadow = true;
+                    pedestal.add(base);
+
+                    this.leverPedestal = pedestal;
+                    this.leverPedestal.position.set(-1.25, 0, -0.25);
+                    this.viajeGroup.add(this.leverPedestal);
+                };
+
+                loader.load(modelUrls.pedestalPalanca, (gltf) => {
+                    if (this.leverPedestal) this.viajeGroup.remove(this.leverPedestal);
+                    this.leverPedestal = gltf.scene;
+                    this.leverPedestal.traverse(child => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+
+                    const box = new THREE.Box3().setFromObject(this.leverPedestal);
+                    const size = box.getSize(new THREE.Vector3());
+                    const scaleFactor = 1.1 / size.y;
+                    const center = box.getCenter(new THREE.Vector3());
+
+                    this.leverPedestal.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                    this.leverPedestal.position.set(
+                        -1.25 - center.x * scaleFactor,
+                        -box.min.y * scaleFactor,
+                        -0.25 - center.z * scaleFactor
+                    );
+                    this.viajeGroup.add(this.leverPedestal);
+                }, undefined, fallbackPedestal);
+            }
+
+            positionLeverOnPlane() {
+                if (!this.leverModel) return;
+                this.leverModel.position.set(-0.92, 0.6, -0.25);
+                this.leverModel.rotation.set(0, Math.PI / 6, 0);
+                this.leverModel.scale.set(0.085, 0.085, 0.085);
+                this.addPlaneLeverMount();
+            }
+
+            resetLeverPose() {
+                this.leverTargetRotation = 0;
+                this.leverCurrentRotation = 0;
+                if (this.leverHandle) {
+                    this.leverHandle.rotation.x = -Math.PI / 4;
+                }
+            }
+
+            buildProceduralSeaScene() {
                 const seaGroup = new THREE.Group();
 
                 const seaGeo = new THREE.PlaneGeometry(12, 12, 16, 16);
@@ -1121,13 +1847,585 @@
 
                 const boatTemplate = toyTemplates['boat'];
                 if (boatTemplate) {
+                    this.boatSceneRoot = new THREE.Group();
+                    this.boatSceneRoot.name = 'barco-interactivo-respaldo';
                     this.seaBoat = boatTemplate.clone();
                     this.seaBoat.position.set(0, 0.15, 0);
                     this.seaBoat.scale.set(1.5, 1.5, 1.5);
-                    seaGroup.add(this.seaBoat);
+                    this.boatSceneRoot.add(this.seaBoat);
+                    seaGroup.add(this.boatSceneRoot);
+                    this.decorateBoatScene();
                 }
 
                 this.viajeGroup.add(seaGroup);
+            }
+
+            buildProceduralSkyScene() {
+                const skyGroup = new THREE.Group();
+
+                const skyDome = new THREE.Mesh(
+                    new THREE.SphereGeometry(15, 48, 24),
+                    new THREE.MeshBasicMaterial({
+                        color: 0x8fd7ff,
+                        side: THREE.BackSide,
+                        transparent: true,
+                        opacity: 0.98
+                    })
+                );
+                skyDome.position.set(0, 5.8, 0);
+                skyGroup.add(skyDome);
+
+                const infiniteFloor = new THREE.Mesh(
+                    new THREE.PlaneGeometry(60, 60),
+                    new THREE.MeshStandardMaterial({
+                        color: 0xffffff,
+                        roughness: 0.82,
+                        metalness: 0.0
+                    })
+                );
+                infiniteFloor.rotation.x = -Math.PI / 2;
+                infiniteFloor.position.y = 0;
+                infiniteFloor.receiveShadow = true;
+                skyGroup.add(infiniteFloor);
+
+                const haze = new THREE.Mesh(
+                    new THREE.CircleGeometry(14, 64),
+                    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 })
+                );
+                haze.rotation.x = -Math.PI / 2;
+                haze.position.y = 0.003;
+                skyGroup.add(haze);
+
+                const sunGlow = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.55, 24, 24),
+                    new THREE.MeshBasicMaterial({ color: 0xfff2b8, transparent: true, opacity: 0.75 })
+                );
+                sunGlow.position.set(-4.4, 7.8, -6.0);
+                skyGroup.add(sunGlow);
+
+                this.createCloudDispenser();
+                this.createSkyCoins();
+
+                this.viajeGroup.add(skyGroup);
+            }
+
+            loadScaledModel(url, targetSize, onReady) {
+                const loader = new GLTFLoader();
+                loader.load(url, (gltf) => {
+                    const model = gltf.scene;
+                    model.traverse(child => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+
+                    const box = new THREE.Box3().setFromObject(model);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+                    const scaleFactor = targetSize / maxDim;
+                    const center = box.getCenter(new THREE.Vector3());
+                    model.scale.setScalar(scaleFactor);
+                    model.position.set(-center.x * scaleFactor, -box.min.y * scaleFactor, -center.z * scaleFactor);
+                    onReady(model);
+                }, undefined, () => {});
+            }
+
+            addBoatObject(object, movable = false) {
+                this.boatInteractiveObjects.push(object);
+                if (movable) this.boatMovableObjects.push(object);
+                if (this.boatSceneRoot) {
+                    this.boatSceneRoot.add(object);
+                } else {
+                    this.viajeGroup.add(object);
+                }
+            }
+
+            decorateBoatScene() {
+                if (this.activeTravelToy !== 'boat') return;
+                this.createBoatCratesAndCandles();
+                this.loadBoatChestAndTreasures();
+                this.loadBoatWheelSet();
+            }
+
+            createBoatCratesAndCandles() {
+                [
+                    [-0.72, 0.18, -0.42, 1.35, 0.2],
+                    [0.62, 0.18, -0.34, 1.2, -0.45],
+                    [-0.38, 0.18, 0.42, 1.1, 0.9]
+                ].forEach(data => {
+                    const crate = this.createBoatCrate(data[3]);
+                    crate.position.set(data[0], data[1], data[2]);
+                    crate.rotation.y = data[4];
+                    this.addBoatObject(crate, true);
+                });
+
+                [
+                    [-0.95, 0.34, 0.22],
+                    [0.88, 0.34, 0.18],
+                    [0.18, 0.36, -0.58]
+                ].forEach(data => {
+                    const candle = this.createBoatCandle();
+                    candle.position.set(data[0], data[1], data[2]);
+                    this.addBoatObject(candle, false);
+                });
+            }
+
+            createBoatCrate(scale = 1) {
+                const crateGroup = new THREE.Group();
+                crateGroup.userData = { type: 'boatCrate', movable: true };
+                const crateMat = new THREE.MeshStandardMaterial({ color: 0x654225, roughness: 0.9 });
+                const trimMat = new THREE.MeshStandardMaterial({ color: 0x2d1b10, roughness: 0.82 });
+
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.24, 0.32), crateMat);
+                body.position.y = 0.12;
+                body.castShadow = true;
+                body.receiveShadow = true;
+                crateGroup.add(body);
+
+                [-0.11, 0.11].forEach(offset => {
+                    const bandX = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.035, 0.04), trimMat);
+                    bandX.position.set(0, 0.24, offset);
+                    bandX.castShadow = true;
+                    crateGroup.add(bandX);
+
+                    const bandZ = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.035, 0.36), trimMat);
+                    bandZ.position.set(offset, 0.24, 0);
+                    bandZ.castShadow = true;
+                    crateGroup.add(bandZ);
+                });
+
+                crateGroup.scale.setScalar(scale);
+                return crateGroup;
+            }
+
+            createBoatCandle() {
+                const candle = new THREE.Group();
+                candle.userData = { type: 'boatCandle' };
+                const waxMat = new THREE.MeshStandardMaterial({ color: 0xf4e3b2, roughness: 0.7 });
+                const flameMat = new THREE.MeshBasicMaterial({ color: 0xffb23a, transparent: true, opacity: 0.92 });
+                const body = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.18, 12), waxMat);
+                body.position.y = 0.09;
+                candle.add(body);
+
+                const flame = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 8), flameMat);
+                flame.position.y = 0.22;
+                flame.scale.y = 1.6;
+                candle.add(flame);
+
+                const light = new THREE.PointLight(0xff9b35, 0.9, 1.8);
+                light.position.y = 0.24;
+                candle.add(light);
+                return candle;
+            }
+
+            loadBoatChestAndTreasures() {
+                this.loadScaledModel(modelUrls.cofre, 0.42, (cofre) => {
+                    cofre.name = 'cofre-pirata';
+                    cofre.position.add(new THREE.Vector3(0.18, 0.18, 0.5));
+                    cofre.rotation.y = -Math.PI / 8;
+                    cofre.userData = { type: 'boatChest', opened: false };
+                    this.addBoatObject(cofre, false);
+                });
+
+                const treasures = [
+                    ['garfio', modelUrls.garfio, 0.24, -0.18, 0.42, 0.56, 0.2],
+                    ['sombreroPirata', modelUrls.sombreroPirata, 0.28, 0.18, 0.45, 0.57, -0.3],
+                    ['pistola', modelUrls.pistola, 0.24, -0.05, 0.4, 0.74, 0.65],
+                    ['catalejo', modelUrls.catalejo, 0.22, 0.34, 0.38, 0.68, 1.2],
+                    ['botella', modelUrls.botella, 0.24, 0.48, 0.32, 0.36, -0.6],
+                    ['espada', modelUrls.espada, 0.34, -0.42, 0.36, 0.7, -0.75]
+                ];
+
+                treasures.forEach(([type, url, size, x, y, z, rotY]) => {
+                    this.loadScaledModel(url, size, (model) => {
+                        model.name = `tesoro-${type}`;
+                        model.position.add(new THREE.Vector3(x, y, z));
+                        model.rotation.y = rotY;
+                        model.userData = { type, movable: true, fromChest: true };
+                        this.addBoatObject(model, true);
+                    });
+                });
+            }
+
+            loadBoatWheelSet() {
+                this.loadScaledModel(modelUrls.timonBase, 0.55, (base) => {
+                    base.name = 'base-timon-fija';
+                    base.position.add(new THREE.Vector3(0, 0.22, -0.72));
+                    base.rotation.y = Math.PI;
+                    base.userData = { type: 'boatWheelBase' };
+                    this.boatWheelBase = base;
+                    this.addBoatObject(base, false);
+                });
+
+                this.loadScaledModel(modelUrls.timon, 0.36, (wheel) => {
+                    wheel.name = 'timon-suelto';
+                    wheel.position.add(new THREE.Vector3(-0.46, 0.42, -0.24));
+                    wheel.rotation.set(0, Math.PI / 2, 0);
+                    wheel.userData = { type: 'boatWheel', movable: true, installed: false };
+                    this.boatWheel = wheel;
+                    this.addBoatObject(wheel, true);
+                });
+            }
+
+            createCloudDispenser() {
+                const machine = new THREE.Group();
+                machine.name = "maquina-dispensadora-nubes";
+
+                const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3b6ea8, roughness: 0.55, metalness: 0.2 });
+                const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.25, metalness: 0.75 });
+                const glassMat = new THREE.MeshStandardMaterial({ color: 0xbfe9ff, transparent: true, opacity: 0.55, roughness: 0.1 });
+
+                const body = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.42, 0.9, 24), bodyMat);
+                body.position.y = 0.45;
+                body.castShadow = true;
+                machine.add(body);
+
+                const dome = new THREE.Mesh(new THREE.SphereGeometry(0.34, 24, 16), glassMat);
+                dome.position.y = 1.02;
+                dome.scale.y = 0.72;
+                machine.add(dome);
+
+                const slot = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.06, 0.025), brassMat);
+                slot.position.set(0, 0.72, 0.43);
+                machine.add(slot);
+
+                const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.28, 16), brassMat);
+                nozzle.position.set(0, 0.35, 0.48);
+                nozzle.rotation.x = Math.PI / 2;
+                machine.add(nozzle);
+
+                const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.58, 0.12, 24), brassMat);
+                base.position.y = 0.06;
+                base.castShadow = true;
+                machine.add(base);
+
+                machine.position.set(0, 0.52, -0.65);
+                machine.userData = { type: 'cloudMachine' };
+                this.cloudMachine = machine;
+                this.viajeGroup.add(machine);
+                this.createDispenserPreviewCloud();
+            }
+
+            createSkyCoins() {
+                const coinMat = new THREE.MeshStandardMaterial({
+                    color: 0xffd34d,
+                    emissive: 0x5a3a00,
+                    emissiveIntensity: 0.15,
+                    roughness: 0.25,
+                    metalness: 0.9
+                });
+
+                const positions = [
+                    [-1.25, 1.05, 0.75],
+                    [1.05, 1.05, 0.55],
+                    [-0.55, 1.05, 1.45],
+                    [0.55, 1.05, 1.2],
+                    [1.55, 1.05, -0.25]
+                ];
+
+                positions.forEach((pos, index) => {
+                    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.018, 24), coinMat);
+                    coin.position.set(pos[0], pos[1], pos[2]);
+                    coin.rotation.x = Math.PI / 2;
+                    coin.userData = {
+                        type: 'skyCoin',
+                        phase: index * Math.PI * 0.4,
+                        restY: pos[1],
+                        falling: false
+                    };
+                    coin.castShadow = true;
+                    this.skyCoins.push(coin);
+                    this.viajeGroup.add(coin);
+                });
+            }
+
+            handleSkySceneClick() {
+                const dispensedHit = this.raycaster.intersectObjects(this.dispensedClouds, true);
+                if (dispensedHit.length > 0) {
+                    const cloud = this.findInteractiveParent(dispensedHit[0].object, this.dispensedClouds);
+                    if (cloud && !cloud.userData.isPreview) {
+                        cloud.userData.sizeStep = (cloud.userData.sizeStep + 1) % 3;
+                        const targetScale = [0.55, 0.9, 1.25][cloud.userData.sizeStep];
+                        cloud.userData.targetScale = targetScale;
+                        this.playSparkleSound();
+                        return true;
+                    }
+                }
+
+                const coinHit = this.raycaster.intersectObjects(this.skyCoins, true);
+                if (coinHit.length > 0) {
+                    const coin = this.findInteractiveParent(coinHit[0].object, this.skyCoins);
+                    if (coin && !coin.userData.falling) {
+                        this.coinsCollected += 1;
+                        this.respawnCoinFromSky(coin);
+                        this.playClinkSound();
+                        return true;
+                    }
+                }
+
+                if (this.cloudMachine) {
+                    const machineHit = this.raycaster.intersectObject(this.cloudMachine, true);
+                    if (machineHit.length > 0) {
+                        if (this.coinsCollected > 0) {
+                            this.coinsCollected -= 1;
+                            this.dispenseCloud();
+                            this.playSparkleSound();
+                        } else {
+                            this.playWobbleSound();
+                        }
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            findInteractiveParent(object, collection) {
+                let target = object;
+                while (target) {
+                    if (collection.includes(target)) return target;
+                    target = target.parent;
+                }
+                return null;
+            }
+
+            respawnCoinFromSky(coin) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 0.65 + Math.random() * 1.1;
+                coin.position.set(Math.cos(angle) * radius, 6 + Math.random() * 1.8, Math.sin(angle) * radius + 0.45);
+                coin.userData.restY = 1.05;
+                coin.userData.falling = true;
+                coin.userData.fallSpeed = 0.035 + Math.random() * 0.02;
+            }
+
+            dispenseCloud() {
+                const cloud = this.createSingleFallbackCloud();
+                cloud.position.set(0, 0.22, -0.08);
+                cloud.scale.setScalar(0.25);
+                cloud.userData = {
+                    type: 'dispensedCloud',
+                    age: 0,
+                    groundedTime: 300,
+                    lifespan: 420,
+                    targetScale: 0.75,
+                    sizeStep: 1,
+                    driftSpeed: 0.004,
+                    phase: Math.random() * Math.PI * 2
+                };
+                this.dispensedClouds.push(cloud);
+                this.viajeGroup.add(cloud);
+            }
+
+            createDispenserPreviewCloud() {
+                const previewCloud = this.createSingleFallbackCloud();
+                previewCloud.position.set(0, 1.0, -0.18);
+                previewCloud.scale.setScalar(0.32);
+                previewCloud.userData = {
+                    type: 'dispensedCloud',
+                    age: 0,
+                    lifespan: 999,
+                    targetScale: 0.32,
+                    sizeStep: 0,
+                    driftSpeed: 0.0,
+                    phase: 0,
+                    isPreview: true
+                };
+                this.dispensedClouds.push(previewCloud);
+                this.viajeGroup.add(previewCloud);
+            }
+
+            createSingleFallbackCloud() {
+                const cloud = new THREE.Group();
+                const cloudMat = new THREE.MeshStandardMaterial({
+                    color: 0xffffff,
+                    roughness: 0.92,
+                    transparent: true,
+                    opacity: 0.92
+                });
+
+                for (let i = 0; i < 6; i++) {
+                    const puff = new THREE.Mesh(new THREE.SphereGeometry(0.2 + i * 0.018, 14, 10), cloudMat.clone());
+                    puff.position.set((i - 2.5) * 0.16, Math.sin(i * 1.3) * 0.055, Math.cos(i * 1.7) * 0.06);
+                    cloud.add(puff);
+                }
+
+                return cloud;
+            }
+
+            loadPlaneSceneExtras() {
+                const loader = new GLTFLoader();
+                this.createFallbackClouds();
+
+                loader.load(modelUrls.planeScene, (gltf) => {
+                    if (this.skyFloorModel) this.viajeGroup.remove(this.skyFloorModel);
+                    this.skyFloorModel = gltf.scene;
+                    this.skyFloorModel.traverse(child => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+
+                    const box = new THREE.Box3().setFromObject(this.skyFloorModel);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scaleFactor = 20.0 / maxDim;
+                    const center = box.getCenter(new THREE.Vector3());
+
+                    this.skyFloorModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                    this.skyFloorModel.position.set(
+                        -center.x * scaleFactor,
+                        -box.min.y * scaleFactor,
+                        -center.z * scaleFactor
+                    );
+                    this.skyFloorModel.rotation.y = Math.PI;
+                    this.viajeGroup.add(this.skyFloorModel);
+                }, undefined, () => {});
+
+                loader.load(modelUrls.cloud, (gltf) => {
+                    this.skyClouds.forEach(cloud => this.viajeGroup.remove(cloud));
+                    this.skyClouds = [];
+
+                    const cloudTemplate = gltf.scene;
+                    cloudTemplate.traverse(child => {
+                        if (child.isMesh) {
+                            child.castShadow = false;
+                            child.receiveShadow = false;
+                        }
+                    });
+
+                    const cloudPositions = [
+                        [-2.4, 1.35, -2.2, 0.55],
+                        [2.1, 1.75, -1.7, 0.42],
+                        [-1.1, 2.1, 0.4, 0.38],
+                        [2.7, 1.05, 0.6, 0.5],
+                        [0.2, 2.45, -2.9, 0.45],
+                        [-3.0, 1.1, 1.2, 0.36]
+                    ];
+
+                    cloudPositions.forEach((data, index) => {
+                        const cloud = cloudTemplate.clone();
+                        cloud.position.set(data[0], data[1], data[2]);
+                        cloud.scale.setScalar(data[3]);
+                        cloud.rotation.y = index * 0.7;
+                        cloud.userData = {
+                            driftSpeed: 0.004 + index * 0.0008,
+                            baseX: data[0],
+                            phase: index * Math.PI * 0.45
+                        };
+                        this.skyClouds.push(cloud);
+                        this.viajeGroup.add(cloud);
+                    });
+                }, undefined, () => {});
+
+                loader.load(modelUrls.planeLarge, (gltf) => {
+                    if (this.largePlaneModel) this.viajeGroup.remove(this.largePlaneModel);
+                    this.largePlaneModel = gltf.scene;
+                    this.largePlaneModel.traverse(child => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+
+                    const box = new THREE.Box3().setFromObject(this.largePlaneModel);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scaleFactor = 0.9 / maxDim;
+                    const center = box.getCenter(new THREE.Vector3());
+
+                    this.largePlaneModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                    this.largePlaneModel.position.set(
+                        0.72 - center.x * scaleFactor,
+                        1.05 - box.min.y * scaleFactor,
+                        -0.35 - center.z * scaleFactor
+                    );
+                    this.largePlaneModel.userData.baseY = 1.05 - box.min.y * scaleFactor;
+                    this.largePlaneModel.rotation.y = Math.PI / 2;
+                    this.viajeGroup.add(this.largePlaneModel);
+
+                    if (this.activeTravelToy === 'plane' && this.leverModel) {
+                        this.positionLeverOnPlane();
+                    }
+                }, undefined, () => {});
+            }
+
+            createFallbackClouds() {
+                if (this.skyClouds.length > 0) return;
+
+                const cloudMat = new THREE.MeshStandardMaterial({
+                    color: 0xffffff,
+                    roughness: 0.92,
+                    transparent: true,
+                    opacity: 0.88
+                });
+
+                const cloudPositions = [
+                    [-2.2, 1.4, -2.0, 1.0],
+                    [1.8, 1.7, -1.5, 0.75],
+                    [-0.8, 2.15, 0.3, 0.65],
+                    [2.6, 1.05, 0.7, 0.9],
+                    [0.0, 2.45, -2.8, 0.8]
+                ];
+
+                cloudPositions.forEach((data, index) => {
+                    const cloud = new THREE.Group();
+                    for (let i = 0; i < 5; i++) {
+                        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.22 + i * 0.025, 14, 10), cloudMat);
+                        puff.position.set((i - 2) * 0.2, Math.sin(i) * 0.07, Math.cos(i * 1.7) * 0.06);
+                        cloud.add(puff);
+                    }
+                    cloud.position.set(data[0], data[1], data[2]);
+                    cloud.scale.setScalar(data[3]);
+                    cloud.userData = {
+                        driftSpeed: 0.004 + index * 0.0007,
+                        baseX: data[0],
+                        phase: index * Math.PI * 0.5
+                    };
+                    this.skyClouds.push(cloud);
+                    this.viajeGroup.add(cloud);
+                });
+            }
+
+            buildPlaceholderScene(toyType, config) {
+                const sceneGroup = new THREE.Group();
+                const colors = {
+                    train: { floor: 0x23311f, accent: 0xd4af37 },
+                    plane: { floor: 0x1d3557, accent: 0x8ecae6 },
+                    truck: { floor: 0x3a2a1d, accent: 0xf4a261 }
+                };
+                const palette = colors[toyType] || colors.train;
+
+                const floor = new THREE.Mesh(
+                    new THREE.CircleGeometry(4.5, 48),
+                    new THREE.MeshStandardMaterial({ color: palette.floor, roughness: 0.85, flatShading: true })
+                );
+                floor.rotation.x = -Math.PI / 2;
+                floor.receiveShadow = true;
+                sceneGroup.add(floor);
+
+                const ring = new THREE.Mesh(
+                    new THREE.TorusGeometry(1.3, 0.025, 8, 72),
+                    new THREE.MeshStandardMaterial({ color: palette.accent, emissive: palette.accent, emissiveIntensity: 0.25 })
+                );
+                ring.position.set(0, 0.04, 0);
+                ring.rotation.x = -Math.PI / 2;
+                sceneGroup.add(ring);
+
+                const toyTemplate = toyTemplates[toyType];
+                if (toyTemplate) {
+                    const featuredToy = toyTemplate.clone();
+                    featuredToy.position.set(0, 0.1, 0);
+                    featuredToy.scale.set(2.2, 2.2, 2.2);
+                    sceneGroup.add(featuredToy);
+                }
+
+                const beacon = new THREE.PointLight(palette.accent, 2.0, 5);
+                beacon.position.set(0, 1.4, 0);
+                sceneGroup.add(beacon);
+
+                this.viajeGroup.add(sceneGroup);
             }
 
             finalizeTransition() {
@@ -1162,17 +2460,24 @@
                     document.querySelector('header').classList.remove('opacity-0', 'pointer-events-none');
 
                     document.getElementById('btn-back-taller').classList.add('hidden');
+                    xb.core.scene.background = this.defaultSceneBackground ? this.defaultSceneBackground.clone() : new THREE.Color(0x0e0804);
+                    xb.core.scene.fog = this.defaultSceneFog || new THREE.FogExp2(0x0e0804, 0.04);
 
-                    // Mover el barco para que no se quede bloqueando el pedestal y reinicie el viaje
+                    // Mover el juguete activo para que no se quede bloqueando el pedestal y reinicie el viaje
+                    const returnType = this.activeTravelToy || 'boat';
+                    const returnConfig = this.activeSceneConfig || sceneConfigs[returnType] || sceneConfigs.boat;
                     this.objects.forEach(obj => {
-                        if (obj.userData.type === 'boat') {
-                            obj.position.set(0.4, 0.9, -0.3); 
-                            obj.rotation.y = Math.PI / 4;
+                        if (obj.userData.type === returnType) {
+                            obj.position.copy(returnConfig.returnOffset || new THREE.Vector3(0.4, 0.9, -0.3)); 
+                            obj.rotation.y = returnConfig.returnRotationY || Math.PI / 4;
+                            obj.userData.isFlying = returnType === 'plane';
                         }
                     });
 
                     this.currentSceneState = 'taller';
                     this.transitionTriggered = false;
+                    this.activeTravelToy = null;
+                    this.activeSceneConfig = null;
 
                     this.finalizeTransition();
 
@@ -1182,6 +2487,7 @@
             // --- LOOP DE ANIMACIÓN ---
             update() {
                 const elapsedTime = performance.now() * 0.001;
+                this.updateXRControllerInteraction();
 
                 if (this.currentSceneState === 'viaje') {
                     // Animación de la palanca (jalar físicamente hacia abajo)
@@ -1206,6 +2512,82 @@
                         this.seaBoat.rotation.z = Math.sin(elapsedTime * 2.0) * 0.05;
                         this.seaBoat.rotation.x = Math.cos(elapsedTime * 1.5) * 0.03;
                     }
+                    if (this.boatSceneRoot) {
+                        this.boatSceneRoot.rotation.y = THREE.MathUtils.lerp(this.boatSceneRoot.rotation.y, this.boatTurnTarget, 0.045);
+                    }
+
+                    if (this.skyClouds && this.skyClouds.length > 0) {
+                        this.skyClouds.forEach((cloud, index) => {
+                            cloud.position.x += cloud.userData.driftSpeed || 0.004;
+                            cloud.position.y += Math.sin(elapsedTime * 0.45 + cloud.userData.phase) * 0.0009;
+                            cloud.rotation.y += 0.0015 + index * 0.0002;
+
+                            if (cloud.position.x > 3.3) {
+                                cloud.position.x = -3.3;
+                            }
+                        });
+                    }
+
+                    if (this.skyCoins && this.skyCoins.length > 0) {
+                        this.skyCoins.forEach((coin, index) => {
+                            coin.rotation.z += 0.035;
+                            if (coin.userData.falling) {
+                                coin.position.y -= coin.userData.fallSpeed || 0.04;
+                                if (coin.position.y <= coin.userData.restY) {
+                                    coin.position.y = coin.userData.restY;
+                                    coin.userData.falling = false;
+                                }
+                            } else {
+                                coin.position.y = coin.userData.restY + Math.sin(elapsedTime * 1.8 + coin.userData.phase) * 0.035;
+                            }
+                        });
+                    }
+
+                    if (this.cloudMachine) {
+                        this.cloudMachine.rotation.y = Math.sin(elapsedTime * 0.7) * 0.05;
+                    }
+
+                    if (this.dispensedClouds && this.dispensedClouds.length > 0) {
+                        const aliveClouds = [];
+                        this.dispensedClouds.forEach(cloud => {
+                            cloud.userData.age += 0.016;
+                            if (!cloud.userData.isPreview && cloud.userData.age > cloud.userData.groundedTime) {
+                                cloud.position.y += 0.0035;
+                                cloud.position.x += cloud.userData.driftSpeed || 0.004;
+                            } else if (cloud.userData.isPreview) {
+                                cloud.position.y = 1.0 + Math.sin(elapsedTime * 1.3) * 0.025;
+                            }
+                            cloud.rotation.y += 0.004;
+
+                            const targetScale = cloud.userData.targetScale || 0.75;
+                            cloud.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.05);
+
+                            const dissolveStart = cloud.userData.groundedTime || (cloud.userData.lifespan * 0.62);
+                            if (cloud.userData.age > dissolveStart) {
+                                const opacity = Math.max(0, 1 - ((cloud.userData.age - dissolveStart) / (cloud.userData.lifespan - dissolveStart)));
+                                cloud.traverse(child => {
+                                    if (child.material) {
+                                        child.material.opacity = opacity * 0.92;
+                                        child.material.transparent = true;
+                                    }
+                                });
+                            }
+
+                            if (cloud.userData.age < cloud.userData.lifespan) {
+                                aliveClouds.push(cloud);
+                            } else {
+                                this.viajeGroup.remove(cloud);
+                            }
+                        });
+                        this.dispensedClouds = aliveClouds;
+                    }
+
+                    if (this.largePlaneModel) {
+                        const baseY = this.largePlaneModel.userData.baseY || 0.9;
+                        this.largePlaneModel.position.y = baseY + Math.sin(elapsedTime * 1.1) * 0.035;
+                        this.largePlaneModel.rotation.z = Math.sin(elapsedTime * 0.9) * 0.035;
+                        this.largePlaneModel.rotation.x = Math.cos(elapsedTime * 0.8) * 0.018;
+                    }
 
                     // Efecto titileo de luz de camarote
                     if (this.boatCabinLight) {
@@ -1224,29 +2606,12 @@
                     }
                 }
 
-                // DETECCION DE BARCO EN PEDESTAL
-                let boatOnPedestal = false;
-                this.objects.forEach(obj => {
-                    if (obj.userData.type === 'boat' && !obj.userData.isFlying) {
-                        const distToPedestal = obj.position.distanceTo(new THREE.Vector3(0, 0.94, -0.5));
-                        if (distToPedestal < 0.08) {
-                            boatOnPedestal = true;
-                        }
-                    }
-                });
+                // Deteccion de cualquier juguete en pedestal
+                const toyOnPedestal = this.getToyOnPedestal();
+                this.setPedestalState(toyOnPedestal);
 
-                if (boatOnPedestal) {
-                    this.pedestalWoodMat.color.setHex(0x1b5e20);
-                    this.pedestalMetalMat.color.setHex(0x4caf50);
-                    this.pedestalMetalMat.emissive.setHex(0x0e3a0e);
-
-                    if (!this.transitionTriggered) {
-                        this.triggerTravelTransition();
-                    }
-                } else {
-                    this.pedestalWoodMat.color.setHex(0x4a2a18);
-                    this.pedestalMetalMat.color.setHex(0xd4af37);
-                    this.pedestalMetalMat.emissive.setHex(0x000000);
+                if (toyOnPedestal && !this.transitionTriggered) {
+                    this.triggerTravelTransition(toyOnPedestal.userData.type);
                 }
 
                 // 2. Partículas de polvo
@@ -1626,6 +2991,16 @@
             const options = new xb.Options();
             options.setAppTitle("Taller del Juguetero 3D");
             options.enableUI();
+            options.referenceSpaceType = 'local-floor';
+            options.sessionInit = {
+                ...(options.sessionInit || {}),
+                optionalFeatures: Array.from(new Set([
+                    ...((options.sessionInit && options.sessionInit.optionalFeatures) || []),
+                    'local-floor',
+                    'bounded-floor',
+                    'hand-tracking'
+                ]))
+            };
             
             xb.add(new ToyWorkshopScript());
             xb.init(options);
@@ -1633,3 +3008,7 @@
     </script>
   </body>
 </html>
+
+
+
+
