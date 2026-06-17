@@ -184,6 +184,7 @@
         import * as THREE from 'three';
         import * as xb from 'xrblocks';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
         import { VRButton } from 'three/addons/webxr/VRButton.js';
 
         // Inicializar iconos de Lucide
@@ -212,6 +213,7 @@
             cofreLid: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/main/1tapa-cofre.glb",
             timonBase: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1timon-base.glb",
             timon: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1timon.glb",
+            fish: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/fish_-_low_poly_-_rigged_-_animated.glb",
             garfio: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1garfio.glb",
             sombreroPirata: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1sombrero%20pirata.glb",
             pistola: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1pistola.glb",
@@ -338,6 +340,9 @@
                 this.chestDimensionHelpers = [];
                 this.boatWheelInstalled = false;
                 this.boatTurnTarget = 0;
+                this.boatFishTemplate = null;
+                this.boatFishAnimations = [];
+                this.boatFishJumps = [];
                 this.selectedBoatObject = null;
                 this.trainInteractiveObjects = [];
                 this.trainMovableObjects = [];
@@ -730,6 +735,10 @@
 
                 if (this.handleXRMenuSelection(controller)) return;
 
+                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'plane') {
+                    if (this.tryGrabDispensedCloudXR(controller)) return;
+                }
+
                 // --- GRAB POR PROXIMIDAD (solo en escena taller) ---
                 if (this.currentSceneState === 'taller' && this.objects.length > 0) {
                     const handPos = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
@@ -814,6 +823,12 @@
                 const held = handedness === 'left' ? this.heldObjectLeft : this.heldObjectRight;
 
                 if (held) {
+                    if (held.userData.type === 'dispensedCloud') {
+                        this.releaseDispensedCloudXR(controller, held);
+                        if (this.activeXRController === controller) this.activeXRController = null;
+                        return;
+                    }
+
                     held.getWorldPosition(this._heldWorldPos);
                     held.getWorldQuaternion(this._heldWorldQuat);
 
@@ -865,6 +880,144 @@
                 this.activeXRController = null;
             }
 
+            tryGrabDispensedCloudXR(controller) {
+                if (!this.dispensedClouds || this.dispensedClouds.length === 0) return false;
+
+                const handPos = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
+                const handedness = controller.userData.handedness;
+                const otherHeld = handedness === 'left' ? this.heldObjectRight : this.heldObjectLeft;
+                let closest = null;
+                let closestDist = this.GRAB_DISTANCE * 1.8;
+
+                for (const cloud of this.dispensedClouds) {
+                    if (!cloud || !cloud.parent || cloud.userData.isPreview || cloud.userData.flyingAway) continue;
+
+                    const cloudPos = new THREE.Vector3();
+                    cloud.getWorldPosition(cloudPos);
+                    const dist = handPos.distanceTo(cloudPos);
+                    const canGrab = !cloud.userData.heldByController || cloud === otherHeld;
+                    if (canGrab && dist < closestDist) {
+                        closestDist = dist;
+                        closest = cloud;
+                    }
+                }
+
+                if (!closest) return false;
+
+                if (closest === otherHeld) {
+                    if (handedness === 'left') this.heldObjectLeft = closest;
+                    else this.heldObjectRight = closest;
+                    closest.userData.secondHand = handedness;
+                    this.beginTwoHandCloudScale(closest);
+                    this.playSparkleSound();
+                    return true;
+                }
+
+                const physObj = this.physicsObjects.find(p => p.mesh === closest);
+                if (physObj) {
+                    physObj.velocity.set(0, 0, 0);
+                    physObj.resting = false;
+                    physObj.onGround = false;
+                }
+
+                closest.userData.heldByController = handedness;
+                closest.userData.primaryHand = handedness;
+                closest.userData.targetScale = closest.scale.x;
+                controller.attach(closest);
+                closest.position.set(0, 0.04, -0.10);
+
+                if (handedness === 'left') this.heldObjectLeft = closest;
+                else this.heldObjectRight = closest;
+
+                this.playWobbleSound();
+                return true;
+            }
+
+            beginTwoHandCloudScale(cloud) {
+                const left = this.xrControllers.find(c => c.userData.handedness === 'left');
+                const right = this.xrControllers.find(c => c.userData.handedness === 'right');
+                if (!left || !right) return;
+
+                const leftPos = new THREE.Vector3().setFromMatrixPosition(left.matrixWorld);
+                const rightPos = new THREE.Vector3().setFromMatrixPosition(right.matrixWorld);
+                const distance = Math.max(leftPos.distanceTo(rightPos), 0.01);
+
+                cloud.userData.twoHandScale = {
+                    startDistance: distance,
+                    startScale: cloud.scale.x
+                };
+            }
+
+            updateTwoHandCloudScaling() {
+                const cloud = this.heldObjectLeft;
+                if (!cloud || cloud !== this.heldObjectRight || cloud.userData.type !== 'dispensedCloud') return;
+
+                const left = this.xrControllers.find(c => c.userData.handedness === 'left');
+                const right = this.xrControllers.find(c => c.userData.handedness === 'right');
+                if (!left || !right) return;
+
+                if (!cloud.userData.twoHandScale) this.beginTwoHandCloudScale(cloud);
+
+                const leftPos = new THREE.Vector3().setFromMatrixPosition(left.matrixWorld);
+                const rightPos = new THREE.Vector3().setFromMatrixPosition(right.matrixWorld);
+                const gesture = cloud.userData.twoHandScale;
+                const distance = Math.max(leftPos.distanceTo(rightPos), 0.01);
+                const targetScale = THREE.MathUtils.clamp(
+                    gesture.startScale * (distance / gesture.startDistance),
+                    0.35,
+                    1.8
+                );
+
+                cloud.userData.targetScale = targetScale;
+                cloud.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.18);
+            }
+
+            releaseDispensedCloudXR(controller, cloud) {
+                const handedness = controller.userData.handedness;
+                const otherHand = handedness === 'left' ? 'right' : 'left';
+                const otherStillHolding = handedness === 'left'
+                    ? this.heldObjectRight === cloud
+                    : this.heldObjectLeft === cloud;
+
+                if (handedness === 'left') this.heldObjectLeft = null;
+                else this.heldObjectRight = null;
+
+                cloud.userData.twoHandScale = null;
+                cloud.userData.secondHand = null;
+
+                if (otherStillHolding) {
+                    if (cloud.userData.primaryHand === handedness) {
+                        const otherController = this.xrControllers.find(c => c.userData.handedness === otherHand);
+                        if (otherController) {
+                            cloud.getWorldPosition(this._heldWorldPos);
+                            cloud.getWorldQuaternion(this._heldWorldQuat);
+                            otherController.attach(cloud);
+                            cloud.position.set(0, 0.04, -0.10);
+                            cloud.userData.primaryHand = otherHand;
+                        }
+                    }
+                    cloud.userData.heldByController = otherHand;
+                    return;
+                }
+
+                cloud.getWorldPosition(this._heldWorldPos);
+                cloud.getWorldQuaternion(this._heldWorldQuat);
+                this.viajeGroup.attach(cloud);
+                cloud.position.copy(this._heldWorldPos);
+                cloud.quaternion.copy(this._heldWorldQuat);
+                cloud.userData.heldByController = null;
+                cloud.userData.primaryHand = null;
+
+                const physObj = this.physicsObjects.find(p => p.mesh === cloud);
+                if (physObj) {
+                    physObj.velocity.set(0, 0, 0);
+                    physObj.resting = false;
+                    physObj.onGround = false;
+                }
+
+                this.playClinkSound();
+            }
+
             isQuestXButtonPressed(source) {
                 if (!source || source.handedness !== 'left' || !source.gamepad) return false;
                 const buttons = source.gamepad.buttons || [];
@@ -893,6 +1046,7 @@
             updateXRControllerInteraction() {
                 if (!this.isXRSessionActive) return;
                 this.updateXRButtonPolling();
+                this.updateTwoHandCloudScaling();
 
                 if (this.xrMenuOpen) {
                     this.xrControllers.forEach(controller => {
@@ -2095,6 +2249,7 @@
                         if (this.boatSceneRoot) {
                             this.boatSceneRoot.userData.tiltTarget = (this.boatSceneRoot.userData.tiltTarget || 0) === 0.08 ? -0.08 : 0.08;
                         }
+                        this.spawnBoatFishJump();
                         this.playWobbleSound();
                         return true;
                     }
@@ -2287,6 +2442,9 @@
                 this.chestDimensionHelpers = [];
                 this.boatWheelInstalled = false;
                 this.boatTurnTarget = 0;
+                this.boatFishTemplate = null;
+                this.boatFishAnimations = [];
+                this.boatFishJumps = [];
                 this.selectedBoatObject = null;
                 this.trainInteractiveObjects = [];
                 this.trainMovableObjects = [];
@@ -2590,7 +2748,7 @@
                 this.leverModel = this.createExitPillar();
 
                 if (this.activeTravelToy === 'boat' && this.boatSceneRoot) {
-                    this.leverModel.position.set(-0.9, 0.05, -1.72);
+                    this.leverModel.position.set(0.0, 0.05, -1.72);
                     this.boatSceneRoot.add(this.leverModel);
                 } else if (this.activeTravelToy === 'train' && this.trainSceneRoot) {
                     this.leverModel.position.set(0.95, 0.0, 0.55);
@@ -3483,13 +3641,91 @@
                 if (this.leverModel && this.leverModel.parent !== this.boatSceneRoot) {
                     if (this.leverModel.parent) this.leverModel.parent.remove(this.leverModel);
                     this.boatSceneRoot.add(this.leverModel);
-                    this.leverModel.position.set(-0.9, 0.05, -1.72);
+                    this.leverModel.position.set(0.0, 0.05, -1.72);
                     this.leverModel.rotation.set(0, 0, 0);
                     this.leverModel.scale.set(1, 1, 1);
                 }
                 this.createBoatCratesAndCandles();
                 this.loadBoatWheelSet();
+                this.loadBoatFishModel();
                 this.loadBoatChestAndTreasures();
+            }
+
+            loadBoatFishModel() {
+                if (this.boatFishTemplate) return;
+                const loader = new GLTFLoader();
+                loader.load(modelUrls.fish, (gltf) => {
+                    const fish = gltf.scene;
+                    fish.traverse(child => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+
+                    const box = new THREE.Box3().setFromObject(fish);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+                    const scaleFactor = 0.28 / maxDim;
+                    const center = box.getCenter(new THREE.Vector3());
+                    fish.scale.setScalar(scaleFactor);
+                    fish.position.set(-center.x * scaleFactor, -center.y * scaleFactor, -center.z * scaleFactor);
+                    this.boatFishTemplate = fish;
+                    this.boatFishAnimations = gltf.animations || [];
+                }, undefined, () => {});
+            }
+
+            spawnBoatFishJump() {
+                if (!this.boatSceneRoot || !this.boatFishTemplate) return;
+
+                const fish = SkeletonUtils.clone(this.boatFishTemplate);
+                fish.name = 'pez-saltando-frente-amarillo';
+                fish.position.set(-1.34, 0.24, 1.95);
+                fish.rotation.set(0, Math.PI / 2, 0);
+
+                const jump = {
+                    mesh: fish,
+                    age: 0,
+                    duration: 1.35,
+                    start: new THREE.Vector3(-1.34, 0.24, 1.95),
+                    end: new THREE.Vector3(1.20, 0.24, 1.95),
+                    mixer: null
+                };
+
+                if (this.boatFishAnimations.length > 0) {
+                    jump.mixer = new THREE.AnimationMixer(fish);
+                    this.boatFishAnimations.forEach(clip => {
+                        jump.mixer.clipAction(clip).reset().play();
+                    });
+                }
+
+                this.boatFishJumps.push(jump);
+                this.boatSceneRoot.add(fish);
+            }
+
+            updateBoatFishJumps(delta) {
+                if (!this.boatFishJumps || this.boatFishJumps.length === 0) return;
+
+                const alive = [];
+                this.boatFishJumps.forEach(jump => {
+                    jump.age += delta;
+                    const t = Math.min(jump.age / jump.duration, 1);
+                    const arc = Math.sin(t * Math.PI);
+
+                    jump.mesh.position.lerpVectors(jump.start, jump.end, t);
+                    jump.mesh.position.y = 0.24 + arc * 0.92;
+                    jump.mesh.rotation.z = -0.8 + t * 1.6;
+                    jump.mesh.rotation.y = Math.PI / 2 + Math.sin(t * Math.PI) * 0.2;
+                    if (jump.mixer) jump.mixer.update(delta);
+
+                    if (t >= 1) {
+                        if (jump.mesh.parent) jump.mesh.parent.remove(jump.mesh);
+                    } else {
+                        alive.push(jump);
+                    }
+                });
+
+                this.boatFishJumps = alive;
             }
             addBoatAmbientLight() {
                 if (!this.boatSceneRoot || this.boatAmbientLight) return;
@@ -3860,8 +4096,8 @@
             loadBoatWheelSet() {
                 this.loadScaledModel(modelUrls.timonBase, 0.807, (base) => {
                     base.name = 'base-timon-fija';
-                    // Pegado al borde verde (z=-1.80)
-                    base.position.set(0.4, 0.0, -1.66);
+                    // Centrada en X, sobre el borde amarillo literal del barco.
+                    base.position.set(0.0, 0.0, 1.72);
                     // Rotado 90° respecto a antes, mirando hacia adentro
                     base.rotation.y = 0;
                     base.userData = { type: 'boatWheelBase' };
@@ -3871,8 +4107,8 @@
 
                 this.loadScaledModel(modelUrls.timon, 0.55, (wheel) => {
                     wheel.name = 'timon-suelto';
-                    // Cerca del borde verde, frente a su base
-                    wheel.position.set(0.4, 0.12, -1.42);
+                    // Suelto al lado de las cajas fijas.
+                    wheel.position.set(-0.42, 0.12, -0.62);
                     // Rotado 90° respecto a antes; cara hacia adentro de la escena (+Z)
                     wheel.rotation.set(0, 0, 0);
                     wheel.userData = { type: 'boatWheel', movable: true, installed: false };
@@ -4484,6 +4720,7 @@
                         const tiltTarget = this.boatSceneRoot.userData.tiltTarget || 0;
                         this.boatSceneRoot.rotation.z += (tiltTarget - this.boatSceneRoot.rotation.z) * 0.04;
                     }
+                    this.updateBoatFishJumps(delta);
                     if (this.chestGroup?.userData.lid) {
                         const chest = this.chestGroup.userData;
                         chest.lidCurrentRotX += (chest.lidTargetRotX - chest.lidCurrentRotX) * 0.08;
@@ -5017,19 +5254,6 @@
     </script>
   </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
