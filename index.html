@@ -699,11 +699,11 @@
                     if (this.activeTravelToy === 'truck' && this.handleTruckScenePointerDown()) return;
 
                     if (this.leverModel) {
-                        const intersectsLever = this.raycaster.intersectObject(this.leverModel, true);
-                        if (intersectsLever.length > 0) {
-                            this.leverTargetRotation = Math.PI / 2;
+                        const intersectsExit = this.raycaster.intersectObject(this.leverModel, true);
+                        if (intersectsExit.length > 0) {
                             this.playLeverClickSound();
-                            setTimeout(() => this.returnToTaller(), 400);
+                            this.returnToTaller();
+                            return;
                         }
                     }
                     return;
@@ -1798,16 +1798,11 @@
                     }
 
                     if (this.leverModel) {
-                        const intersectsLever = this.raycaster.intersectObject(this.leverModel, true);
-                        if (intersectsLever.length > 0) {
-                            // Jalar palanca: activar rotación de la manija
-                            this.leverTargetRotation = Math.PI / 2; // de -45° arriba a +45° abajo
+                        const intersectsExit = this.raycaster.intersectObject(this.leverModel, true);
+                        if (intersectsExit.length > 0) {
                             this.playLeverClickSound();
-                            
-                            // Retornar al taller después de la animación de jalar
-                            setTimeout(() => {
-                                this.returnToTaller();
-                            }, 400);
+                            this.returnToTaller();
+                            return;
                         }
                     }
                     return;
@@ -2327,226 +2322,84 @@
                 }
             }
             // Cargar e instalar el Modelo de la Palanca GLTF en la pared
+            createExitPillar() {
+                const group = new THREE.Group();
+                group.name = 'exit-pillar';
+                group.userData = { type: 'exitPillar' };
+
+                const mat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.4, metalness: 0.6 });
+                const glowMat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, emissive: 0x00b0d4, emissiveIntensity: 1.2, roughness: 0.2 });
+
+                const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 1.1, 6), mat);
+                pillar.position.y = 0.55;
+                pillar.castShadow = true;
+                group.add(pillar);
+
+                const base = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.07, 6), mat);
+                base.position.y = 0.035;
+                base.castShadow = true;
+                group.add(base);
+
+                const panel = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.18, 0.06), mat);
+                panel.position.y = 1.18;
+                panel.castShadow = true;
+                group.add(panel);
+
+                const glow = new THREE.Mesh(new THREE.BoxGeometry(0.57, 0.2, 0.04), glowMat);
+                glow.position.set(0, 1.18, -0.02);
+                group.add(glow);
+
+                const texture = this.createXRTextTexture('SALIDA', 512, 192, {
+                    size: 72,
+                    background: 'rgba(0, 229, 255, 0.95)',
+                    color: '#061018'
+                });
+                const textPanel = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.48, 0.14),
+                    new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide })
+                );
+                textPanel.position.set(0, 1.18, 0.035);
+                group.add(textPanel);
+
+                const light = new THREE.PointLight(0x00e5ff, 0.6, 1.8);
+                light.position.set(0, 1.2, 0.2);
+                group.add(light);
+
+                return group;
+            }
+
             loadLeverModel() {
-                const loader = new GLTFLoader();
-                if (this.leverModel?.parent) {
-                    this.leverModel.parent.remove(this.leverModel);
-                }
-                if (this.leverPillarSupport?.parent) {
-                    this.leverPillarSupport.parent.remove(this.leverPillarSupport);
-                    this.leverPillarSupport = null;
-                }
-
-                this.leverModel = new THREE.Group();
-                this.leverModel.name = "palanca-retorno";
-                if (this.activeTravelToy === 'plane') {
-                    this.leverModel.position.set(-1.55, 0.0, -0.25);
-                    this.leverModel.rotation.y = Math.PI / 6;
-                    this.leverModel.scale.set(0.42, 0.42, 0.42);
-                } else if (this.activeTravelToy === 'boat') {
-                    this.leverModel.position.set(0.0, 0.74 / 1.5, -0.90);
-                    this.leverModel.rotation.y = 0;
-                    this.leverModel.scale.set(0.82, 0.82, 0.82);
-                } else {
-                    this.leverModel.position.set(-1.15, 1.28, -0.95);
-                    this.leverModel.rotation.y = Math.PI / 4;
-                    this.leverModel.scale.set(0.22, 0.22, 0.22);
-                }
+                if (this.leverModel?.parent) this.leverModel.parent.remove(this.leverModel);
+                if (this.leverPillarSupport?.parent) this.leverPillarSupport.parent.remove(this.leverPillarSupport);
+                if (this.leverPedestal?.parent) this.leverPedestal.parent.remove(this.leverPedestal);
+                this.leverPillarSupport = null;
+                this.leverPedestal = null;
+                this.leverMountPanel = null;
                 this.leverHandle = null;
-                const leverGroup = this.leverModel;
 
-                const markMeshes = (root) => {
-                    root.traverse(child => {
-                        if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                        }
-                    });
-                };
-                const createLeverPillarSupport = () => {
-                    const support = new THREE.Group();
-                    support.name = 'pilar-palanca-low-poly';
-                    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x2a1a0e, roughness: 0.92, flatShading: true });
-                    const pillar = new THREE.Mesh(
-                        new THREE.CylinderGeometry(0.06, 0.09, 0.8, 5),
-                        pillarMat
-                    );
-                    pillar.position.set(0, -0.4, -0.04);
-                    pillar.castShadow = true;
-                    support.add(pillar);
-
-                    const base = new THREE.Mesh(
-                        new THREE.CylinderGeometry(0.13, 0.16, 0.06, 5),
-                        pillarMat
-                    );
-                    base.position.set(0, -0.81, -0.04);
-                    base.castShadow = true;
-                    support.add(base);
-                    return support;
-                };
-
-                const addLeverPillarSupport = () => {
-                    if (this.leverPillarSupport) return;
-                    const support = createLeverPillarSupport();
-                    this.leverPillarSupport = support;
-                    if (this.activeTravelToy === 'plane') {
-                        support.position.copy(leverGroup.position);
-                        support.position.y -= 0.35;
-                        support.rotation.copy(leverGroup.rotation);
-                        this.viajeGroup.add(support);
-                    } else {
-                        leverGroup.add(support);
-                    }
-                };
-
-                const addFallbackLever = () => {
-                    if (this.leverModel !== leverGroup) return;
-                    leverGroup.clear();
-
-                    const baseMat = new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.85 });
-                    const metalMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.35, metalness: 0.8 });
-                    const woodMat = new THREE.MeshStandardMaterial({ color: 0x7b4a25, roughness: 0.7 });
-
-                    const base = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.25, 0.22), baseMat);
-                    base.position.set(0, 0, 0);
-                    base.castShadow = true;
-                    base.receiveShadow = true;
-                    leverGroup.add(base);
-
-                    const pivot = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), metalMat);
-                    pivot.position.set(0, 0, 0.16);
-                    pivot.castShadow = true;
-                    leverGroup.add(pivot);
-
-                    this.leverHandle = new THREE.Group();
-                    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 1.2, 14), woodMat);
-                    stick.position.set(0, 0.55, 0.2);
-                    stick.rotation.z = -0.18;
-                    stick.castShadow = true;
-                    this.leverHandle.add(stick);
-
-                    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), metalMat);
-                    knob.position.set(0, 1.15, 0.2);
-                    knob.castShadow = true;
-                    this.leverHandle.add(knob);
-
-                    leverGroup.add(this.leverHandle);
-                    if (this.activeTravelToy === 'plane') {
-                        this.addPlaneLeverMount();
-                    }
-                    this.resetLeverPose();
-                    addLeverPillarSupport();
-                };
-
-                const loadPart = (url) => new Promise((resolve, reject) => {
-                    loader.load(url, (gltf) => resolve(gltf.scene), undefined, reject);
-                });
-
-                Promise.all([
-                    loadPart(modelUrls.palancaBase),
-                    loadPart(modelUrls.palancaPalo)
-                ]).then(([baseModel, handleModel]) => {
-                    if (this.leverModel !== leverGroup) return;
-                    markMeshes(baseModel);
-                    markMeshes(handleModel);
-                    addLeverPillarSupport();
-
-                    baseModel.name = "palanca-base";
-                    handleModel.name = "palanca-palo";
-
-                    baseModel.position.set(0, 0, 0);
-                    handleModel.position.set(0, 0, 0.18);
-
-                    leverGroup.add(baseModel);
-                    this.leverHandle = handleModel;
-                    leverGroup.add(this.leverHandle);
-                    if (this.activeTravelToy === 'plane') {
-                        this.addPlaneLeverMount();
-                    }
-                    this.resetLeverPose();
-                }).catch((err) => {
-                    console.warn("No se pudieron cargar las piezas de la palanca. Usando palanca de respaldo.", err);
-                    addFallbackLever();
-                });
+                this.leverModel = this.createExitPillar();
 
                 if (this.activeTravelToy === 'boat' && this.boatSceneRoot) {
+                    this.leverModel.position.set(0.0, 0.05, -0.88);
                     this.boatSceneRoot.add(this.leverModel);
+                } else if (this.activeTravelToy === 'train' && this.trainSceneRoot) {
+                    this.leverModel.position.set(0.95, 0.0, 0.55);
+                    this.trainSceneRoot.add(this.leverModel);
+                } else if (this.activeTravelToy === 'plane') {
+                    this.leverModel.position.set(-1.55, 0.0, -0.2);
+                    this.leverModel.rotation.y = Math.PI / 6;
+                    this.viajeGroup.add(this.leverModel);
                 } else {
+                    this.leverModel.position.set(-1.15, 0.0, -0.9);
                     this.viajeGroup.add(this.leverModel);
                 }
             }
-
-            addPlaneLeverMount() {
-                if (!this.leverModel) return;
-                if (this.leverPedestal) {
-                    this.leverPedestal.position.set(-1.55, 0, -0.25);
-                    return;
-                }
-
-                const loader = new GLTFLoader();
-                const fallbackPedestal = () => {
-                    const pedestal = new THREE.Group();
-                    pedestal.name = 'pedestal-palanca-respaldo';
-
-                    const woodMat = new THREE.MeshStandardMaterial({ color: 0x6b3f22, roughness: 0.82 });
-                    const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.9 });
-
-                    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 1.1, 10), woodMat);
-                    post.position.y = 0.55;
-                    post.castShadow = true;
-                    post.receiveShadow = true;
-                    pedestal.add(post);
-
-                    const top = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.1, 0.34), darkWoodMat);
-                    top.position.y = 1.1;
-                    top.castShadow = true;
-                    top.receiveShadow = true;
-                    pedestal.add(top);
-
-                    const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.42), darkWoodMat);
-                    base.position.y = 0.06;
-                    base.castShadow = true;
-                    base.receiveShadow = true;
-                    pedestal.add(base);
-
-                    this.leverPedestal = pedestal;
-                    this.leverPedestal.position.set(-1.55, 0, -0.25);
-                    this.viajeGroup.add(this.leverPedestal);
-                };
-
-                loader.load(modelUrls.pedestalPalanca, (gltf) => {
-                    if (this.leverPedestal) this.viajeGroup.remove(this.leverPedestal);
-                    this.leverPedestal = gltf.scene;
-                    this.leverPedestal.traverse(child => {
-                        if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                        }
-                    });
-
-                    const box = new THREE.Box3().setFromObject(this.leverPedestal);
-                    const size = box.getSize(new THREE.Vector3());
-                    const scaleFactor = 1.1 / size.y;
-                    const center = box.getCenter(new THREE.Vector3());
-
-                    this.leverPedestal.scale.set(scaleFactor, scaleFactor, scaleFactor);
-                    this.leverPedestal.position.set(
-                        -1.55 - center.x * scaleFactor,
-                        -box.min.y * scaleFactor,
-                        -0.25 - center.z * scaleFactor
-                    );
-                    this.viajeGroup.add(this.leverPedestal);
-                }, undefined, fallbackPedestal);
-            }
-
             positionLeverOnPlane() {
                 if (!this.leverModel) return;
-                this.leverModel.position.set(-1.55, 0.0, -0.25);
+                this.leverModel.position.set(-1.55, 0.0, -0.2);
                 this.leverModel.rotation.set(0, Math.PI / 6, 0);
-                this.leverModel.scale.set(0.42, 0.42, 0.42);
-                this.addPlaneLeverMount();
+                this.leverModel.scale.set(1, 1, 1);
             }
-
             resetLeverPose() {
                 this.leverTargetRotation = 0;
                 this.leverCurrentRotation = 0;
@@ -2635,13 +2488,13 @@
                 this.trainSceneRoot.add(floor);
 
                 const platform = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.18, 6.8), platformMat);
-                platform.position.set(-4.5, 0.09, 0);
+                platform.position.set(0, 0.09, 0);
                 platform.receiveShadow = true;
                 platform.castShadow = true;
                 this.trainSceneRoot.add(platform);
 
                 const edge = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.16, 6.8), new THREE.MeshStandardMaterial({ color: 0xcaa75b, roughness: 0.72 }));
-                edge.position.set(-3.09, 0.26, 0);
+                edge.position.set(1.31, 0.26, 0);
                 edge.castShadow = true;
                 this.trainSceneRoot.add(edge);
                 const TRACK_RADIUS = 6.5;
@@ -2686,37 +2539,37 @@
                 const hook = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.05), railMat);
                 hook.position.set(0.25, 2.15, 0);
                 lampPost.add(post, hook);
-                lampPost.position.set(-5.55, 0.18, 1.85);
+                lampPost.position.set(-1.05, 0.18, 1.85);
                 this.trainSceneRoot.add(lampPost);
 
                 this.trainLantern = this.createTrainLantern();
                 this.trainLantern.scale.setScalar(2);
-                this.trainLantern.position.set(-5.28, 1.92, 1.85);
+                this.trainLantern.position.set(-0.78, 1.92, 1.85);
                 this.trainLantern.userData.movable = false;
                 this.addTrainObject(this.trainLantern, false);
 
                 const lanternCopy = this.createTrainLantern();
                 lanternCopy.scale.setScalar(2);
-                lanternCopy.position.set(-4.85, 0.18, 0.85);
+                lanternCopy.position.set(-0.35, 0.18, 0.85);
                 lanternCopy.userData.type = 'trainLanternCopy';
                 lanternCopy.userData.movable = true;
                 this.addTrainObject(lanternCopy, true);
 
                 const whistle = this.createTrainWhistle();
                 whistle.scale.setScalar(2);
-                whistle.position.set(-4.1, 0.34, 1.65);
+                whistle.position.set(0.4, 0.34, 1.65);
                 this.addTrainObject(whistle, false);
 
                 this.trainSignal = this.createTrainSignal();
                 this.trainSignal.scale.setScalar(2);
-                this.trainSignal.position.set(-3.35, 0.18, -2.15);
+                this.trainSignal.position.set(1.15, 0.18, -2.15);
                 this.addTrainObject(this.trainSignal, false);
                 this.updateTrainSignalLights();
 
                 [
-                    [-5.55, 0.22, -1.6, 2.0],
-                    [-4.65, 0.22, -2.0, 1.7],
-                    [-5.25, 0.22, -2.75, 2.2]
+                    [-1.05, 0.22, -1.6, 2.0],
+                    [-0.15, 0.22, -2.0, 1.7],
+                    [-0.75, 0.22, -2.75, 2.2]
                 ].forEach(([x, y, z, scale]) => {
                     const crate = this.createTrainCrate(scale);
                     crate.position.set(x, y, z);
@@ -2724,14 +2577,14 @@
                     this.addTrainObject(crate, true);
                 });
 
-                [-5.65, -5.15, -4.65].forEach((x, index) => {
+                [-1.15, -0.65, -0.15].forEach((x, index) => {
                     const coal = this.createCoalPile();
                     coal.scale.setScalar(2);
                     coal.position.set(x, 0.2, 1.05 - index * 0.55);
                     this.addTrainObject(coal, true);
                 });
                 this.trainBoardSwitch = this.createTrainBoardSwitch();
-                this.trainBoardSwitch.position.set(-3.55, 0.18, 0.95);
+                this.trainBoardSwitch.position.set(0.95, 0.18, 0.95);
                 this.addTrainObject(this.trainBoardSwitch, false);
                 this.trainExitButton = this.createTrainExitButton();
                 this.trainExitButton.position.set(0.0, 0.85, 0.55);
@@ -2741,8 +2594,8 @@
                 this.createFullScaleTrainConsist();
                 this.createBirds();
                 this.viajeGroup.add(this.trainSceneRoot);
-                xb.core.camera.position.set(-4.5, 1.65, 1.0);
-                xb.core.camera.lookAt(new THREE.Vector3(-3.09, 1.1, 0));
+                xb.core.camera.position.set(0, 1.65, 1.0);
+                xb.core.camera.lookAt(new THREE.Vector3(1.31, 1.1, 0));
             }
 
             createFullScaleTrainConsist() {
@@ -2898,8 +2751,8 @@
 
             exitTrainToPlatform() {
                 this.trainBoarded = false;
-                xb.core.camera.position.set(-4.5, 1.65, 1.0);
-                xb.core.camera.lookAt(new THREE.Vector3(-3.09, 1.1, 0));
+                xb.core.camera.position.set(0, 1.65, 1.0);
+                xb.core.camera.lookAt(new THREE.Vector3(1.31, 1.1, 0));
                 if (this.trainBoardSwitch?.userData.button) {
                     this.trainBoardSwitch.userData.button.position.z = 0.065;
                     this.trainBoardSwitch.userData.button.material.color.setHex(0x39ff75);
@@ -3378,9 +3231,9 @@
                 if (this.leverModel && this.leverModel.parent !== this.boatSceneRoot) {
                     if (this.leverModel.parent) this.leverModel.parent.remove(this.leverModel);
                     this.boatSceneRoot.add(this.leverModel);
-                    this.leverModel.position.set(0.0, 0.74 / 1.5, -0.90);
+                    this.leverModel.position.set(0.0, 0.05, -0.88);
                     this.leverModel.rotation.set(0, 0, 0);
-                    this.leverModel.scale.set(0.82, 0.82, 0.82);
+                    this.leverModel.scale.set(1, 1, 1);
                 }
                 this.createBoatCratesAndCandles();
                 this.loadBoatWheelSet();
@@ -5264,6 +5117,10 @@
     </script>
   </body>
 </html>
+
+
+
+
 
 
 
