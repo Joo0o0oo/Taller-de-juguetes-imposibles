@@ -732,12 +732,16 @@
                 this.currentInputSource = 'xr';
                 this.activeXRController = controller;
                 this.setRaycasterFromXRController(controller);
+                const handedness = controller.userData.handedness;
+                const held = handedness === 'left' ? this.heldObjectLeft : this.heldObjectRight;
+
+                if (held) {
+                    this.releaseXRHeldObject(controller, held);
+                    this.activeXRController = null;
+                    return;
+                }
 
                 if (this.handleXRMenuSelection(controller)) return;
-
-                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'plane') {
-                    if (this.tryGrabDispensedCloudXR(controller)) return;
-                }
 
                 // --- GRAB POR PROXIMIDAD (solo en escena taller) ---
                 if (this.currentSceneState === 'taller' && this.objects.length > 0) {
@@ -756,34 +760,37 @@
                     }
 
                     if (closest) {
-                        const handedness = controller.userData.handedness;
                         if (closest === this.heldObjectLeft || closest === this.heldObjectRight) return;
-
-                        const physObj = this.physicsObjects.find(p => p.mesh === closest);
-                        if (physObj) {
-                            physObj.velocity.set(0, 0, 0);
-                            physObj.resting = false;
-                        }
-
-                        closest.userData.isFlying = false;
-                        closest.userData.heldByController = handedness;
-
-                        controller.attach(closest);
-                        closest.position.set(0, 0.04, -0.09);
-                        closest.quaternion.set(0, 0, 0, 1);
-
-                        if (handedness === 'left') this.heldObjectLeft = closest;
-                        else this.heldObjectRight = closest;
-
-                        this.playWobbleSound();
+                        this.grabXRObject(controller, closest, 'taller');
                         return;
                     }
                 }
 
                 if (this.currentSceneState === 'viaje') {
-                    if (this.activeTravelToy === 'plane' && this.handleSkySceneClick()) return;
-                    if (this.activeTravelToy === 'boat' && this.handleBoatScenePointerDown()) return;
-                    if (this.activeTravelToy === 'train' && this.handleTrainScenePointerDown()) return;
+                    if (this.activeTravelToy === 'plane' && this.handleSkySceneClick()) {
+                        if (this.selectedSkyObject) {
+                            const picked = this.selectedSkyObject;
+                            this.selectedSkyObject = null;
+                            this.grabXRObject(controller, picked, 'sky');
+                        }
+                        return;
+                    }
+                    if (this.activeTravelToy === 'boat' && this.handleBoatScenePointerDown()) {
+                        if (this.selectedBoatObject) {
+                            const picked = this.selectedBoatObject;
+                            this.selectedBoatObject = null;
+                            this.grabXRObject(controller, picked, 'boat');
+                        }
+                        return;
+                    }
+                    if (this.activeTravelToy === 'train' && this.handleTrainScenePointerDown()) {
+                        if (this.selectedTrainObject) {
+                            const picked = this.selectedTrainObject;
+                            this.selectedTrainObject = null;
+                            this.grabXRObject(controller, picked, 'train');
+                        }
+                        return;
+                    }
 
                     if (this.leverModel) {
                         const intersectsExit = this.raycaster.intersectObject(this.leverModel, true);
@@ -805,217 +812,11 @@
                 }
 
                 if (!this.objects.includes(target)) return;
-                this.selectedObject = target;
-                this.selectedObject.userData.isFlying = false;
-
-                const currentY = this.selectedObject.position.y;
-                this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, currentY, 0));
-                if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
-                    this.offset.copy(this.selectedObject.position).sub(this.intersectionPoint);
-                }
-                this.selectedObject.position.y += 0.08;
-                this.playWobbleSound();
+                this.grabXRObject(controller, target, 'taller');
             }
 
             onXRSelectEnd(controller) {
-                // --- SOLTAR OBJETO AGARRADO POR PROXIMIDAD ---
-                const handedness = controller.userData.handedness;
-                const held = handedness === 'left' ? this.heldObjectLeft : this.heldObjectRight;
-
-                if (held) {
-                    if (held.userData.type === 'dispensedCloud') {
-                        this.releaseDispensedCloudXR(controller, held);
-                        if (this.activeXRController === controller) this.activeXRController = null;
-                        return;
-                    }
-
-                    held.getWorldPosition(this._heldWorldPos);
-                    held.getWorldQuaternion(this._heldWorldQuat);
-
-                    this.tallerGroup.attach(held);
-                    held.position.copy(this._heldWorldPos);
-                    held.quaternion.copy(this._heldWorldQuat);
-
-                    held.userData.heldByController = null;
-                    if (handedness === 'left') this.heldObjectLeft = null;
-                    else this.heldObjectRight = null;
-
-                    const physObj = this.physicsObjects.find(p => p.mesh === held);
-                    if (physObj) {
-                        physObj.velocity.set(0, 0, 0);
-                        physObj.resting = false;
-                        physObj.onGround = false;
-                    }
-
-                    this.selectedObject = held;
-                    this.releaseSelectedWorkshopToy();
-
-                    if (this.activeXRController !== controller) return;
-                    this.activeXRController = null;
-                    return;
-                }
-
-                if (this.activeXRController !== controller) return;
-                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'plane') {
-                    this.handleSkyScenePointerUp();
-                    this.activeXRController = null;
-                    return;
-                }
-
-                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'boat') {
-                    this.handleBoatScenePointerUp();
-                    this.activeXRController = null;
-                    return;
-                }
-
-                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'train') {
-                    this.handleTrainScenePointerUp();
-                    this.activeXRController = null;
-                    return;
-                }
-
-                if (this.currentSceneState === 'taller') {
-                    this.releaseSelectedWorkshopToy();
-                }
-                this.activeXRController = null;
-            }
-
-            tryGrabDispensedCloudXR(controller) {
-                if (!this.dispensedClouds || this.dispensedClouds.length === 0) return false;
-
-                const handPos = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
-                const handedness = controller.userData.handedness;
-                const otherHeld = handedness === 'left' ? this.heldObjectRight : this.heldObjectLeft;
-                let closest = null;
-                let closestDist = this.GRAB_DISTANCE * 1.8;
-
-                for (const cloud of this.dispensedClouds) {
-                    if (!cloud || !cloud.parent || cloud.userData.isPreview || cloud.userData.flyingAway) continue;
-
-                    const cloudPos = new THREE.Vector3();
-                    cloud.getWorldPosition(cloudPos);
-                    const dist = handPos.distanceTo(cloudPos);
-                    const canGrab = !cloud.userData.heldByController || cloud === otherHeld;
-                    if (canGrab && dist < closestDist) {
-                        closestDist = dist;
-                        closest = cloud;
-                    }
-                }
-
-                if (!closest) return false;
-
-                if (closest === otherHeld) {
-                    if (handedness === 'left') this.heldObjectLeft = closest;
-                    else this.heldObjectRight = closest;
-                    closest.userData.secondHand = handedness;
-                    this.beginTwoHandCloudScale(closest);
-                    this.playSparkleSound();
-                    return true;
-                }
-
-                const physObj = this.physicsObjects.find(p => p.mesh === closest);
-                if (physObj) {
-                    physObj.velocity.set(0, 0, 0);
-                    physObj.resting = false;
-                    physObj.onGround = false;
-                }
-
-                closest.userData.heldByController = handedness;
-                closest.userData.primaryHand = handedness;
-                closest.userData.targetScale = closest.scale.x;
-                controller.attach(closest);
-                closest.position.set(0, 0.04, -0.10);
-
-                if (handedness === 'left') this.heldObjectLeft = closest;
-                else this.heldObjectRight = closest;
-
-                this.playWobbleSound();
-                return true;
-            }
-
-            beginTwoHandCloudScale(cloud) {
-                const left = this.xrControllers.find(c => c.userData.handedness === 'left');
-                const right = this.xrControllers.find(c => c.userData.handedness === 'right');
-                if (!left || !right) return;
-
-                const leftPos = new THREE.Vector3().setFromMatrixPosition(left.matrixWorld);
-                const rightPos = new THREE.Vector3().setFromMatrixPosition(right.matrixWorld);
-                const distance = Math.max(leftPos.distanceTo(rightPos), 0.01);
-
-                cloud.userData.twoHandScale = {
-                    startDistance: distance,
-                    startScale: cloud.scale.x
-                };
-            }
-
-            updateTwoHandCloudScaling() {
-                const cloud = this.heldObjectLeft;
-                if (!cloud || cloud !== this.heldObjectRight || cloud.userData.type !== 'dispensedCloud') return;
-
-                const left = this.xrControllers.find(c => c.userData.handedness === 'left');
-                const right = this.xrControllers.find(c => c.userData.handedness === 'right');
-                if (!left || !right) return;
-
-                if (!cloud.userData.twoHandScale) this.beginTwoHandCloudScale(cloud);
-
-                const leftPos = new THREE.Vector3().setFromMatrixPosition(left.matrixWorld);
-                const rightPos = new THREE.Vector3().setFromMatrixPosition(right.matrixWorld);
-                const gesture = cloud.userData.twoHandScale;
-                const distance = Math.max(leftPos.distanceTo(rightPos), 0.01);
-                const targetScale = THREE.MathUtils.clamp(
-                    gesture.startScale * (distance / gesture.startDistance),
-                    0.35,
-                    1.8
-                );
-
-                cloud.userData.targetScale = targetScale;
-                cloud.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.18);
-            }
-
-            releaseDispensedCloudXR(controller, cloud) {
-                const handedness = controller.userData.handedness;
-                const otherHand = handedness === 'left' ? 'right' : 'left';
-                const otherStillHolding = handedness === 'left'
-                    ? this.heldObjectRight === cloud
-                    : this.heldObjectLeft === cloud;
-
-                if (handedness === 'left') this.heldObjectLeft = null;
-                else this.heldObjectRight = null;
-
-                cloud.userData.twoHandScale = null;
-                cloud.userData.secondHand = null;
-
-                if (otherStillHolding) {
-                    if (cloud.userData.primaryHand === handedness) {
-                        const otherController = this.xrControllers.find(c => c.userData.handedness === otherHand);
-                        if (otherController) {
-                            cloud.getWorldPosition(this._heldWorldPos);
-                            cloud.getWorldQuaternion(this._heldWorldQuat);
-                            otherController.attach(cloud);
-                            cloud.position.set(0, 0.04, -0.10);
-                            cloud.userData.primaryHand = otherHand;
-                        }
-                    }
-                    cloud.userData.heldByController = otherHand;
-                    return;
-                }
-
-                cloud.getWorldPosition(this._heldWorldPos);
-                cloud.getWorldQuaternion(this._heldWorldQuat);
-                this.viajeGroup.attach(cloud);
-                cloud.position.copy(this._heldWorldPos);
-                cloud.quaternion.copy(this._heldWorldQuat);
-                cloud.userData.heldByController = null;
-                cloud.userData.primaryHand = null;
-
-                const physObj = this.physicsObjects.find(p => p.mesh === cloud);
-                if (physObj) {
-                    physObj.velocity.set(0, 0, 0);
-                    physObj.resting = false;
-                    physObj.onGround = false;
-                }
-
-                this.playClinkSound();
+                if (this.activeXRController === controller) this.activeXRController = null;
             }
 
             isQuestXButtonPressed(source) {
@@ -1046,7 +847,6 @@
             updateXRControllerInteraction() {
                 if (!this.isXRSessionActive) return;
                 this.updateXRButtonPolling();
-                this.updateTwoHandCloudScaling();
 
                 if (this.xrMenuOpen) {
                     this.xrControllers.forEach(controller => {
@@ -1079,7 +879,7 @@
                 }
 
                 if (this.currentSceneState !== 'taller' || !this.selectedObject) return;
-                const targetY = Math.max(0.9, Math.min(1.8, this.selectedObject.position.y));
+                const targetY = this.selectedObject.position.y;
                 this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, targetY, 0));
                 if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
                     const targetX = this.intersectionPoint.x + this.offset.x;
@@ -2090,6 +1890,71 @@
                 phys.resting = false;
             }
 
+            getPointerDragY() {
+                return 0.05 + ((this.mouse.y + 1) * 0.5) * 2.75;
+            }
+
+            grabXRObject(controller, object, sceneType = 'taller') {
+                if (!controller || !object || object.userData.type === 'dispensedCloud') return false;
+                const handedness = controller.userData.handedness;
+                if (object === this.heldObjectLeft || object === this.heldObjectRight) return false;
+
+                const physObj = this.physicsObjects.find(p => p.mesh === object);
+                if (physObj) {
+                    physObj.velocity.set(0, 0, 0);
+                    physObj.resting = false;
+                    physObj.onGround = false;
+                }
+
+                object.userData.isFlying = false;
+                object.userData.heldByController = handedness;
+                object.userData.holdSceneType = sceneType;
+                object.userData.holdReturnParent = object.parent;
+
+                controller.attach(object);
+                object.position.set(0, 0.04, -0.10);
+
+                if (handedness === 'left') this.heldObjectLeft = object;
+                else this.heldObjectRight = object;
+
+                this.playWobbleSound();
+                return true;
+            }
+
+            releaseXRHeldObject(controller, object) {
+                if (!controller || !object) return false;
+                const handedness = controller.userData.handedness;
+                const sceneType = object.userData.holdSceneType || 'taller';
+                const returnParent = object.userData.holdReturnParent || this.tallerGroup;
+
+                if (returnParent?.attach) {
+                    returnParent.attach(object);
+                }
+
+                object.userData.heldByController = null;
+                object.userData.holdReturnParent = null;
+                object.userData.holdSceneType = null;
+
+                if (handedness === 'left') this.heldObjectLeft = null;
+                else this.heldObjectRight = null;
+
+                if (sceneType === 'boat') {
+                    this.selectedBoatObject = object;
+                    this.handleBoatScenePointerUp();
+                } else if (sceneType === 'train') {
+                    this.selectedTrainObject = object;
+                    this.handleTrainScenePointerUp();
+                } else if (sceneType === 'sky') {
+                    this.selectedSkyObject = object;
+                    this.handleSkyScenePointerUp();
+                } else {
+                    this.selectedObject = object;
+                    this.releaseSelectedWorkshopToy();
+                }
+
+                return true;
+            }
+
             // --- FÍSICA E INTERACCIÓN DE ARRASTRE DE JUGUETES Y PALANCA ---
             onPointerDown(event) {
                 
@@ -2100,6 +1965,24 @@
                 this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
                 this.raycaster.setFromCamera(this.mouse, xb.core.camera);
+
+                if (this.currentSceneState === 'viaje') {
+                    if (this.activeTravelToy === 'plane' && this.selectedSkyObject) {
+                        this.handleSkyScenePointerUp();
+                        return;
+                    }
+                    if (this.activeTravelToy === 'boat' && this.selectedBoatObject) {
+                        this.handleBoatScenePointerUp();
+                        return;
+                    }
+                    if (this.activeTravelToy === 'train' && this.selectedTrainObject) {
+                        this.handleTrainScenePointerUp();
+                        return;
+                    }
+                } else if (this.selectedObject) {
+                    this.releaseSelectedWorkshopToy();
+                    return;
+                }
 
                 // Lógica de Raycasting en el Modo de Viaje (Detectar clic en la Palanca)
                 if (this.currentSceneState === 'viaje') {
@@ -2178,41 +2061,23 @@
                 if (this.selectedObject) {
                     this.raycaster.setFromCamera(this.mouse, xb.core.camera);
 
-                    let targetY = 0.9;
-                    if (this.mouse.y > 0.2 && this.mouse.y <= 0.6) {
-                        targetY = 1.45; 
-                    } else if (this.mouse.y > 0.6) {
-                        targetY = 1.8;  
-                    }
-
+                    const targetY = this.getPointerDragY();
                     this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, targetY, 0));
 
                     if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
                         const targetX = this.intersectionPoint.x + this.offset.x;
                         const targetZ = this.intersectionPoint.z + this.offset.z;
 
-                        if (targetY === 1.8) {
+                        const distanceToPedestal = Math.sqrt(targetX*targetX + (targetZ - (-0.5))*(targetZ - (-0.5)));
+                        
+                        if (distanceToPedestal < 0.15 && targetY < 1.3) {
+                            this.selectedObject.position.set(0, 0.94, -0.5);
+                        } else {
                             this.selectedObject.position.set(
                                 Math.max(-1.3, Math.min(1.3, targetX)),
-                                1.8,
+                                targetY,
                                 Math.max(-1.3, Math.min(0.3, targetZ))
                             );
-                        } else if (targetY === 1.45) {
-                            this.selectedObject.position.x = Math.max(-1.25, Math.min(0.9, targetX));
-                            this.selectedObject.position.z = Math.max(-1.22, Math.min(-0.88, targetZ));
-                            this.selectedObject.position.y = 1.45;
-                        } else {
-                            const distanceToPedestal = Math.sqrt(targetX*targetX + (targetZ - (-0.5))*(targetZ - (-0.5)));
-                            
-                            if (distanceToPedestal < 0.15) {
-                                this.selectedObject.position.set(0, 0.94, -0.5);
-                            } else {
-                                this.selectedObject.position.set(
-                                    Math.max(-1.2, Math.min(1.2, targetX)),
-                                    0.9,
-                                    Math.max(-1.15, Math.min(0.12, targetZ))
-                                );
-                            }
                         }
                     }
                 }
@@ -2221,23 +2086,6 @@
             onPointerUp(event) {
                 
                 this.currentInputSource = 'pointer';
-                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'plane') {
-                    this.handleSkyScenePointerUp();
-                    return;
-                }
-
-                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'boat') {
-                    this.handleBoatScenePointerUp();
-                    return;
-                }
-
-                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'train') {
-                    this.handleTrainScenePointerUp();
-                    return;
-                }
-
-                if (this.currentSceneState !== 'taller') return;
-                this.releaseSelectedWorkshopToy();
             }
 
             handleBoatScenePointerDown() {
@@ -2292,7 +2140,7 @@
                 if (this.currentInputSource !== 'xr') {
                     this.raycaster.setFromCamera(this.mouse, xb.core.camera);
                 }
-                const targetY = this.selectedBoatObject.userData.type === 'boatWheel' ? 0.42 : Math.max(0.26, this.selectedBoatObject.position.y);
+                const targetY = this.currentInputSource === 'xr' ? this.selectedBoatObject.position.y : this.getPointerDragY();
                 this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, targetY, 0));
 
                 if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
@@ -2391,7 +2239,6 @@
                     }
                 }
 
-                obj.position.y = obj.userData.type === 'boatWheel' ? 0.42 : Math.max(0.26, obj.position.y - 0.05);
                 this.playClinkSound();
                 this.applyPhysicsReleaseImpulse(obj);
                 this.selectedBoatObject = null;
@@ -3320,7 +3167,7 @@
                 if (this.currentInputSource !== 'xr') {
                     this.raycaster.setFromCamera(this.mouse, xb.core.camera);
                 }
-                const targetY = Math.max(0.18, this.selectedTrainObject.position.y);
+                const targetY = this.currentInputSource === 'xr' ? this.selectedTrainObject.position.y : this.getPointerDragY();
                 this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, targetY, 0));
                 if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
                     this.selectedTrainObject.position.set(
@@ -3333,7 +3180,6 @@
 
             handleTrainScenePointerUp() {
                 if (!this.selectedTrainObject) return;
-                this.selectedTrainObject.position.y = Math.max(0.18, this.selectedTrainObject.position.y - 0.05);
                 this.applyPhysicsReleaseImpulse(this.selectedTrainObject);
                 this.playClinkSound();
                 this.selectedTrainObject = null;
@@ -4313,7 +4159,7 @@
                 if (this.currentInputSource !== 'xr') {
                     this.raycaster.setFromCamera(this.mouse, xb.core.camera);
                 }
-                const targetY = Math.max(1.08, this.selectedSkyObject.position.y);
+                const targetY = this.currentInputSource === 'xr' ? this.selectedSkyObject.position.y : this.getPointerDragY();
                 this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, targetY, 0));
                 if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
                     this.selectedSkyObject.position.set(
@@ -4358,7 +4204,6 @@
                     return;
                 }
 
-                obj.position.y = Math.max(1.08, obj.position.y - 0.05);
                 this.applyPhysicsReleaseImpulse(obj);
                 this.playClinkSound();
             }
@@ -5254,17 +5099,6 @@
     </script>
   </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
 
 
 
