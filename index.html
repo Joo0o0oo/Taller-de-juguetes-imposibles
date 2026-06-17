@@ -9,8 +9,8 @@
     <link type="text/css" rel="stylesheet" href="https://xrblocks.github.io/css/xr.css" />
     <!-- Tailwind CSS para la UI de control del taller -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts Vintage -->
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Croissant+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <!-- Iconos Lucide -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -31,55 +31,63 @@
     </script>
     
     <style>
+      :root {
+        --col-green-dark:  #718348;
+        --col-green-olive: #4C5C2D;
+        --col-grey:        #464644;
+        --col-cream:       #FFF4F5;
+        --col-red:         #D96868;
+      }
       body {
-        font-family: 'Quicksand', sans-serif;
-        background-color: #0f0a06;
+        font-family: 'Inter', sans-serif;
+        background-color: #1e2010;
         overflow: hidden;
+        color: var(--col-cream);
       }
       h1, h2 {
-        font-family: 'Cinzel', serif;
+        font-family: 'Croissant One', serif;
       }
       ::-webkit-scrollbar {
         width: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: rgba(15, 10, 6, 0.5);
+        background: rgba(30, 32, 16, 0.5);
       }
       ::-webkit-scrollbar-thumb {
-        background: rgba(217, 119, 6, 0.4);
+        background: rgba(113, 131, 72, 0.5);
         border-radius: 3px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: rgba(217, 119, 6, 0.6);
+        background: rgba(113, 131, 72, 0.8);
       }
     </style>
   </head>
 
-  <body class="relative w-full h-screen text-amber-100 select-none">
+  <body class="relative w-full h-screen text-[#FFF4F5] select-none">
     
     <!-- Capa de Interfaz de Usuario Desktop Overlay -->
     <div class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 md:p-6 z-10">
         
         <!-- Cabecera / Título -->
-        <header class="flex justify-between items-start pointer-events-auto w-full max-w-xl bg-black/70 backdrop-blur-md border border-amber-900/40 p-4 rounded-2xl shadow-2xl transition-all duration-500">
+        <header class="flex justify-between items-start pointer-events-auto w-full max-w-xl bg-[#464644]/80 backdrop-blur-md border border-[#4C5C2D]/50 p-4 rounded-2xl shadow-2xl transition-all duration-500">
             <div>
-                <h1 class="text-xl md:text-2xl font-bold text-amber-400 flex items-center gap-2">
-                    <i data-lucide="sparkles" class="text-amber-400 fill-amber-400/20 animate-pulse"></i> Taller del Juguetero
+                <h1 class="text-xl md:text-2xl font-bold text-[#718348] flex items-center gap-2">
+                    <i data-lucide="sparkles" class="text-[#718348] fill-[#718348]/20 animate-pulse"></i> Taller del Juguetero
                 </h1>
-                <p class="text-xs text-amber-200/80 mt-1">
+                <p class="text-xs text-[#FFF4F5]/80 mt-1">
                     Explora el taller cerrado de estilo low-poly. La cámara está situada a 1.65m para darte una perspectiva realista en primera persona. ¡Coloca el barco en el pedestal para viajar!
                 </p>
             </div>
-            <button id="btn-music" class="p-2.5 bg-amber-900/30 hover:bg-amber-900/60 border border-amber-500/30 text-amber-300 rounded-xl transition duration-300 flex items-center justify-center gap-1.5" title="Melodía del Taller">
+            <button id="btn-music" class="p-2.5 bg-[#718348]/30 hover:bg-[#718348]/60 border border-[#718348]/30 text-[#FFF4F5] rounded-xl transition duration-300 flex items-center justify-center gap-1.5" title="Melodía del Taller">
                 <i id="music-icon" data-lucide="music" class="w-5 h-5"></i>
-                <span id="music-badge" class="hidden w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                <span id="music-badge" class="hidden w-2 h-2 rounded-full bg-[#718348] animate-ping"></span>
             </button>
         </header>
 
         <!-- Centro: Indicador visual de arrastre o ayuda -->
         <div class="hidden sm:flex justify-center items-center opacity-70 transition-opacity duration-500">
-            <span class="bg-black/60 px-4 py-2 rounded-full text-xs border border-amber-500/30 text-amber-300 flex items-center gap-2 shadow-lg">
-                <i data-lucide="move" class="w-4 h-4 text-amber-400"></i> Click izquierdo para arrastrar juguetes • Suéltalos en el pedestal central • Suelta el avión en el aire para que vuele.
+            <span class="bg-[#464644]/70 px-4 py-2 rounded-full text-xs border border-[#718348]/30 text-[#FFF4F5] flex items-center gap-2 shadow-lg">
+                <i data-lucide="move" class="w-4 h-4 text-[#718348]"></i> Click izquierdo para arrastrar juguetes • Suéltalos en el pedestal central • Suelta el avión en el aire para que vuele.
             </span>
         </div>
 
@@ -87,33 +95,33 @@
         <footer class="w-full flex flex-col md:flex-row justify-between gap-4 items-stretch md:items-end pointer-events-auto transition-all duration-500">
             
             <!-- Selector de Juguetes a Crear -->
-            <div class="bg-black/60 backdrop-blur-md border border-amber-900/40 p-4 rounded-2xl shadow-2xl flex-1 max-w-md">
-                <h2 class="text-sm font-semibold text-amber-300 mb-3 flex items-center gap-1.5 border-b border-amber-900/30 pb-1.5 font-bold uppercase tracking-wider">
-                    <i data-lucide="hammer" class="w-4 h-4 text-amber-400 animate-bounce"></i> Fabricar tus Juguetes (GLB)
+            <div class="bg-[#464644]/70 backdrop-blur-md border border-[#4C5C2D]/50 p-4 rounded-2xl shadow-2xl flex-1 max-w-md">
+                <h2 class="text-sm font-semibold text-[#FFF4F5] mb-3 flex items-center gap-1.5 border-b border-[#4C5C2D]/40 pb-1.5 font-bold uppercase tracking-wider">
+                    <i data-lucide="hammer" class="w-4 h-4 text-[#718348] animate-bounce"></i> Fabricar tus Juguetes (GLB)
                 </h2>
                 <div class="grid grid-cols-4 gap-2">
-                    <button id="btn-spawn-train" data-toy-btn="train" disabled class="flex flex-col items-center justify-center p-2 bg-amber-950/20 opacity-40 border border-amber-700/20 rounded-xl transition group duration-300">
-                        <i data-lucide="train" class="w-6 h-6 text-amber-500 group-hover:scale-110 transition duration-300"></i>
-                        <span class="text-[10px] mt-1 text-amber-200/90 font-medium">Tren</span>
+                    <button id="btn-spawn-train" data-toy-btn="train" disabled class="flex flex-col items-center justify-center p-2 bg-[#4C5C2D]/20 opacity-40 border border-[#718348]/20 rounded-xl transition group duration-300">
+                        <i data-lucide="train" class="w-6 h-6 text-[#718348] group-hover:scale-110 transition duration-300"></i>
+                        <span class="text-[10px] mt-1 text-[#FFF4F5]/90 font-medium">Tren</span>
                     </button>
-                    <button id="btn-spawn-plane" data-toy-btn="plane" disabled class="flex flex-col items-center justify-center p-2 bg-amber-950/20 opacity-40 border border-amber-700/20 rounded-xl transition group duration-300">
-                        <i data-lucide="plane" class="w-6 h-6 text-amber-500 group-hover:scale-110 transition duration-300"></i>
-                        <span class="text-[10px] mt-1 text-amber-200/90 font-medium">Avión</span>
+                    <button id="btn-spawn-plane" data-toy-btn="plane" disabled class="flex flex-col items-center justify-center p-2 bg-[#4C5C2D]/20 opacity-40 border border-[#718348]/20 rounded-xl transition group duration-300">
+                        <i data-lucide="plane" class="w-6 h-6 text-[#718348] group-hover:scale-110 transition duration-300"></i>
+                        <span class="text-[10px] mt-1 text-[#FFF4F5]/90 font-medium">Avión</span>
                     </button>
-                    <button id="btn-spawn-boat" data-toy-btn="boat" disabled class="flex flex-col items-center justify-center p-2 bg-amber-950/20 opacity-40 border border-amber-700/20 rounded-xl transition group duration-300">
-                        <i data-lucide="ship" class="w-6 h-6 text-amber-500 group-hover:scale-110 transition duration-300"></i>
-                        <span class="text-[10px] mt-1 text-amber-200/90 font-medium">Barco</span>
+                    <button id="btn-spawn-boat" data-toy-btn="boat" disabled class="flex flex-col items-center justify-center p-2 bg-[#4C5C2D]/20 opacity-40 border border-[#718348]/20 rounded-xl transition group duration-300">
+                        <i data-lucide="ship" class="w-6 h-6 text-[#718348] group-hover:scale-110 transition duration-300"></i>
+                        <span class="text-[10px] mt-1 text-[#FFF4F5]/90 font-medium">Barco</span>
                     </button>
-                    <button id="btn-spawn-truck" data-toy-btn="truck" disabled class="flex flex-col items-center justify-center p-2 bg-amber-950/20 opacity-40 border border-amber-700/20 rounded-xl transition group duration-300">
-                        <i data-lucide="truck" class="w-6 h-6 text-amber-500 group-hover:scale-110 transition duration-300"></i>
-                        <span class="text-[10px] mt-1 text-amber-200/90 font-medium">Camión</span>
+                    <button id="btn-spawn-truck" data-toy-btn="truck" disabled class="flex flex-col items-center justify-center p-2 bg-[#4C5C2D]/20 opacity-40 border border-[#718348]/20 rounded-xl transition group duration-300">
+                        <i data-lucide="truck" class="w-6 h-6 text-[#718348] group-hover:scale-110 transition duration-300"></i>
+                        <span class="text-[10px] mt-1 text-[#FFF4F5]/90 font-medium">Camión</span>
                     </button>
                 </div>
             </div>
 
             <!-- Panel de Control de Iluminación Cálida -->
-            <div class="bg-black/60 backdrop-blur-md border border-amber-900/40 p-4 rounded-2xl shadow-2xl w-full md:w-80">
-                <h2 class="text-sm font-semibold text-amber-300 mb-3 flex items-center gap-1.5 border-b border-amber-900/30 pb-1.5">
+            <div class="bg-[#464644]/70 backdrop-blur-md border border-[#4C5C2D]/50 p-4 rounded-2xl shadow-2xl w-full md:w-80">
+                <h2 class="text-sm font-semibold text-[#FFF4F5] mb-3 flex items-center gap-1.5 border-b border-[#4C5C2D]/40 pb-1.5">
                     <i data-lucide="sun-medium" class="w-4 h-4"></i> Iluminación del Taller (Cálida)
                 </h2>
                 
@@ -121,29 +129,29 @@
                     <!-- Temperatura/Calidez -->
                     <div>
                         <div class="flex justify-between text-xs mb-1">
-                            <span class="text-amber-200/90">Calidez del Taller (Color)</span>
-                            <span id="txt-warmth" class="text-amber-400 font-semibold">Máxima (Cobre)</span>
+                            <span class="text-[#FFF4F5]/90">Calidez del Taller (Color)</span>
+                            <span id="txt-warmth" class="text-[#718348] font-semibold">Máxima (Cobre)</span>
                         </div>
                         <input id="slider-warmth" type="range" min="0" max="100" value="85" 
-                               class="w-full accent-amber-500 h-1 bg-amber-950 rounded-lg cursor-pointer">
+                               class="w-full accent-[#718348] h-1 bg-[#4C5C2D] rounded-lg cursor-pointer">
                     </div>
 
                     <!-- Intensidad de la Lámpara -->
                     <div>
                         <div class="flex justify-between text-xs mb-1">
-                            <span class="text-amber-200/90">Lámpara del Escritorio</span>
-                            <span id="txt-lamp" class="text-amber-400 font-semibold">120%</span>
+                            <span class="text-[#FFF4F5]/90">Lámpara del Escritorio</span>
+                            <span id="txt-lamp" class="text-[#718348] font-semibold">120%</span>
                         </div>
                         <input id="slider-lamp" type="range" min="0" max="200" value="120" 
-                               class="w-full accent-amber-500 h-1 bg-amber-950 rounded-lg cursor-pointer">
+                               class="w-full accent-[#718348] h-1 bg-[#4C5C2D] rounded-lg cursor-pointer">
                     </div>
 
                     <!-- Botones Rápidos y Limpieza -->
                     <div class="grid grid-cols-2 gap-2 pt-1">
-                        <button id="btn-candle" class="py-1.5 px-2 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-600/40 hover:border-amber-500 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                        <button id="btn-candle" class="py-1.5 px-2 bg-[#4C5C2D]/50 hover:bg-[#718348]/60 border border-[#718348]/40 hover:border-[#718348] rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition">
                             <i data-lucide="flame" class="w-3.5 h-3.5 text-orange-500 fill-orange-500"></i> Vela: Encendida
                         </button>
-                        <button id="btn-clear" class="py-1.5 px-2 bg-red-950/40 hover:bg-red-900/60 border border-red-900/40 hover:border-red-500/50 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 text-red-300 transition">
+                        <button id="btn-clear" class="py-1.5 px-2 bg-[#D96868]/20 hover:bg-[#D96868]/40 border border-[#D96868]/30 hover:border-[#D96868]/60 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 text-[#D96868] transition">
                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Despejar Mesa
                         </button>
                     </div>
@@ -156,17 +164,17 @@
     <!-- Capa de Transición de Viaje -->
     <div id="transition-overlay" class="fixed inset-0 bg-black flex flex-col items-center justify-center z-50 transition-opacity duration-1000 opacity-0 pointer-events-none">
         <div class="text-center">
-            <i data-lucide="anchor" class="w-16 h-16 text-amber-400 mx-auto mb-4 animate-[bounce_2s_infinite]"></i>
-            <h2 class="text-3xl font-bold text-amber-300 font-serif tracking-widest uppercase" id="transition-title">¡Iniciando viaje!</h2>
-            <p id="transition-status" class="text-sm text-amber-100/70 mt-2">Levantando anclas, encendiendo luces de cubierta...</p>
-            <div class="mt-6 w-48 h-1 bg-amber-950/80 rounded-full mx-auto overflow-hidden">
-                <div class="h-full bg-amber-500 animate-[pulse_1.5s_infinite] w-full"></div>
+            <i data-lucide="anchor" class="w-16 h-16 text-[#718348] mx-auto mb-4 animate-[bounce_2s_infinite]"></i>
+            <h2 class="text-3xl font-bold text-[#FFF4F5] font-['Croissant_One'] tracking-widest uppercase" id="transition-title">¡Iniciando viaje!</h2>
+            <p id="transition-status" class="text-sm text-[#FFF4F5]/70 mt-2">Levantando anclas, encendiendo luces de cubierta...</p>
+            <div class="mt-6 w-48 h-1 bg-[#4C5C2D]/70 rounded-full mx-auto overflow-hidden">
+                <div class="h-full bg-[#718348] animate-[pulse_1.5s_infinite] w-full"></div>
             </div>
         </div>
     </div>
 
     <!-- Botón Flotante para Regresar al Taller (Actúa como respaldo secundario) -->
-    <button id="btn-back-taller" class="hidden fixed top-6 right-6 z-20 p-3 bg-amber-950/90 hover:bg-amber-900 border border-amber-500/50 text-amber-300 rounded-xl transition duration-300 shadow-2xl flex items-center gap-2 pointer-events-auto">
+    <button id="btn-back-taller" class="hidden fixed top-6 right-6 z-20 p-3 bg-[#4C5C2D]/90 hover:bg-[#718348] border border-[#718348]/50 text-[#FFF4F5] rounded-xl transition duration-300 shadow-2xl flex items-center gap-2 pointer-events-auto">
         <i data-lucide="arrow-left" class="w-5 h-5"></i>
         <span class="font-bold text-xs uppercase tracking-wider">Regresar al Taller</span>
     </button>
@@ -257,18 +265,8 @@
                 modelScale: 15.0,
                 skyColor: 0x82cfff,
                 fogColor: 0xbfe9ff
-            },
-            truck: {
-                title: "¡Salida a la ruta!",
-                loadingText: "Trazando camino, carga y horizonte...",
-                readyText: "Cargando ruta, colinas, señales y carga de carretera...",
-                sceneUrl: null,
-                fallback: "road",
-                sound: "horn",
-                returnOffset: new THREE.Vector3(0.45, 0.9, -0.55),
-                returnRotationY: Math.PI / 6,
-                modelScale: 6.0
             }
+            // El camión ya no tiene escenario ni activación: es solo un juguete sostenible.
         };
 
         const woodMaterials = {
@@ -304,6 +302,11 @@
                 this.xrMenuItems = [];
                 this.xrMenuOpen = false;
                 this.xrLastMenuToggleTime = 0;
+                this.heldObjectLeft = null;
+                this.heldObjectRight = null;
+                this.GRAB_DISTANCE = 0.22;
+                this._heldWorldPos = new THREE.Vector3();
+                this._heldWorldQuat = new THREE.Quaternion();
                 
                 // Grupos para administrar escenas
                 this.tallerGroup = new THREE.Group();
@@ -312,7 +315,7 @@
                 this.transitionTriggered = false;
                 this.activeTravelToy = null;
                 this.activeSceneConfig = null;
-                this.pedestalCenter = new THREE.Vector3(0, 0.94, -0.5);
+                this.pedestalCenter = new THREE.Vector3(0, 0.94, -0.5); // se actualiza en _setupPedestalOnTable
                 this.skyClouds = [];
                 this.largePlaneModel = null;
                 this.skyFloorModel = null;
@@ -352,6 +355,7 @@
                 this._pendingExitButton = null;
                 this.trainBoarded = false;
                 this.trainJustBoarded = false;
+                this.trainInnerLights = [];
                 this.lastTrainSteamTime = 0;
                 this.truckSceneRoot = null;
                 this.truckInteractiveObjects = [];
@@ -577,7 +581,7 @@
                 ctx.lineWidth = 8;
                 ctx.strokeRect(4, 4, width - 8, height - 8);
                 ctx.fillStyle = options.color || '#fde68a';
-                ctx.font = `${options.weight || 700} ${options.size || 34}px Quicksand, Arial, sans-serif`;
+                ctx.font = `${options.weight || 700} ${options.size || 34}px Inter, Arial, sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(text, width / 2, height / 2);
@@ -685,6 +689,7 @@
                         this.returnToTaller();
                     } else {
                         this.clearToys();
+                        this._initialToysSpawned = true;
                         this.spawnInitialToys();
                         this.playSweepSound();
                     }
@@ -725,11 +730,51 @@
 
                 if (this.handleXRMenuSelection(controller)) return;
 
+                // --- GRAB POR PROXIMIDAD (solo en escena taller) ---
+                if (this.currentSceneState === 'taller' && this.objects.length > 0) {
+                    const handPos = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
+                    let closest = null;
+                    let closestDist = this.GRAB_DISTANCE;
+
+                    for (const obj of this.objects) {
+                        const objPos = new THREE.Vector3();
+                        obj.getWorldPosition(objPos);
+                        const dist = handPos.distanceTo(objPos);
+                        if (dist < closestDist) {
+                            closestDist = dist;
+                            closest = obj;
+                        }
+                    }
+
+                    if (closest) {
+                        const handedness = controller.userData.handedness;
+                        if (closest === this.heldObjectLeft || closest === this.heldObjectRight) return;
+
+                        const physObj = this.physicsObjects.find(p => p.mesh === closest);
+                        if (physObj) {
+                            physObj.velocity.set(0, 0, 0);
+                            physObj.resting = false;
+                        }
+
+                        closest.userData.isFlying = false;
+                        closest.userData.heldByController = handedness;
+
+                        controller.attach(closest);
+                        closest.position.set(0, 0.04, -0.09);
+                        closest.quaternion.set(0, 0, 0, 1);
+
+                        if (handedness === 'left') this.heldObjectLeft = closest;
+                        else this.heldObjectRight = closest;
+
+                        this.playWobbleSound();
+                        return;
+                    }
+                }
+
                 if (this.currentSceneState === 'viaje') {
                     if (this.activeTravelToy === 'plane' && this.handleSkySceneClick()) return;
                     if (this.activeTravelToy === 'boat' && this.handleBoatScenePointerDown()) return;
                     if (this.activeTravelToy === 'train' && this.handleTrainScenePointerDown()) return;
-                    if (this.activeTravelToy === 'truck' && this.handleTruckScenePointerDown()) return;
 
                     if (this.leverModel) {
                         const intersectsExit = this.raycaster.intersectObject(this.leverModel, true);
@@ -764,8 +809,38 @@
             }
 
             onXRSelectEnd(controller) {
-                if (this.activeXRController !== controller) return;
+                // --- SOLTAR OBJETO AGARRADO POR PROXIMIDAD ---
+                const handedness = controller.userData.handedness;
+                const held = handedness === 'left' ? this.heldObjectLeft : this.heldObjectRight;
 
+                if (held) {
+                    held.getWorldPosition(this._heldWorldPos);
+                    held.getWorldQuaternion(this._heldWorldQuat);
+
+                    this.tallerGroup.attach(held);
+                    held.position.copy(this._heldWorldPos);
+                    held.quaternion.copy(this._heldWorldQuat);
+
+                    held.userData.heldByController = null;
+                    if (handedness === 'left') this.heldObjectLeft = null;
+                    else this.heldObjectRight = null;
+
+                    const physObj = this.physicsObjects.find(p => p.mesh === held);
+                    if (physObj) {
+                        physObj.velocity.set(0, 0, 0);
+                        physObj.resting = false;
+                        physObj.onGround = false;
+                    }
+
+                    this.selectedObject = held;
+                    this.releaseSelectedWorkshopToy();
+
+                    if (this.activeXRController !== controller) return;
+                    this.activeXRController = null;
+                    return;
+                }
+
+                if (this.activeXRController !== controller) return;
                 if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'plane') {
                     this.handleSkyScenePointerUp();
                     this.activeXRController = null;
@@ -780,12 +855,6 @@
 
                 if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'train') {
                     this.handleTrainScenePointerUp();
-                    this.activeXRController = null;
-                    return;
-                }
-
-                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'truck') {
-                    this.handleTruckScenePointerUp();
                     this.activeXRController = null;
                     return;
                 }
@@ -1080,8 +1149,12 @@
 
                 roomGroup.add(crate1, crate2);
 
+                this.tallerGroup.add(roomGroup);
+
+                // Taburete — objeto manipulable independiente (no parte de roomGroup)
                 const stool = new THREE.Group();
-                stool.position.set(0, 0, -0.2);
+                stool.position.set(0.0, 0.0, 0.55); // frente a la mesa, en el piso
+                stool.userData = { type: 'stool', isFlying: false, uuid: THREE.MathUtils.generateUUID() };
                 const stoolSeat = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.03, 8), woodBeamMat);
                 stoolSeat.position.y = 0.45;
                 stoolSeat.castShadow = true; stoolSeat.receiveShadow = true;
@@ -1097,15 +1170,17 @@
                     leg.castShadow = true;
                     stool.add(leg);
                 }
-                roomGroup.add(stool);
-
-                this.tallerGroup.add(roomGroup);
+                this.tallerGroup.add(stool);
+                this.objects.push(stool);
+                this.registerPhysicsObject(stool, 0.0);
             }
 
             // CREACIÓN DEL PEDESTAL DE EXPOSICIÓN (20cm x 20cm x 4cm de alto con borde metálico dorado)
             createPedestalPlatform() {
                 this.pedestalGroup = new THREE.Group();
-                this.pedestalGroup.position.set(0, 0.9 + 0.02, -0.5);
+                // Y provisional; se ajusta al topY real en _setupPedestalOnTable()
+                this.pedestalGroup.position.set(0, 0.92, -0.5);
+                this._setupPedestalOnTable();
 
                 const woodGeo = new THREE.BoxGeometry(0.192, 0.038, 0.192);
                 this.pedestalWoodMat = new THREE.MeshStandardMaterial({
@@ -1194,6 +1269,8 @@
                         topY: deskBox.max.y
                     };
                     this.registerWorkshopTableSurface();
+                    // Escritorio listo — spawnear juguetes si los templates ya cargaron
+                    this.trySpawnInitialToys();
                 }, undefined, (err) => {
                     console.warn("Fallo cargando escritorio original, cargando respaldo...", err);
                     this.createFallbackDesk();
@@ -1229,15 +1306,19 @@
                 this.workshopTableSurface = { minX: -0.85, maxX: 0.85, minZ: -0.93, maxZ: 0.03, topY: 0.81 };
                 this.registerWorkshopTableSurface();
                 this.tallerGroup.add(fallbackDesk);
+                this.trySpawnInitialToys();
             }
 
             createWorkshopScenery() {
-                // --- LÁMPARA VINTAGE DE LATÓN ---
-                const lampGroup = new THREE.Group();
-                lampGroup.position.set(-0.6, 0.9, -0.6); 
-
                 const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3, metalness: 0.8 });
-                
+
+                // --- LÁMPARA VINTAGE: apoyada sobre la mesa, lado izquierdo-trasero ---
+                // Se posiciona en Y=0 relativo al grupo; el grupo se coloca en la superficie de la mesa
+                const lampGroup = new THREE.Group();
+                // posición provisional; se ajusta al topY real del escritorio en setupLampOnTable()
+                lampGroup.position.set(-0.55, 0, -0.55);
+                lampGroup.name = 'lampGroup';
+
                 const base = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.02, 16), brassMat);
                 base.position.y = 0.01;
                 lampGroup.add(base);
@@ -1259,11 +1340,13 @@
                 lampGroup.add(this.lampBulbGlow);
 
                 base.castShadow = true; arm.castShadow = true; shade.castShadow = true;
+                this.lampGroup = lampGroup;
                 this.tallerGroup.add(lampGroup);
 
-                // --- PALMATORIA CON VELA CÁLIDA ---
+                // --- VELA: junto a la lámpara, misma zona izquierda-trasera de la mesa ---
                 const candleGroup = new THREE.Group();
-                candleGroup.position.set(0.5, 0.9, -0.3); 
+                candleGroup.name = 'candleGroup';
+                candleGroup.position.set(-0.28, 0, -0.52);
 
                 const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.015, 16), new THREE.MeshStandardMaterial({ color: 0x22252a, roughness: 0.6 }));
                 dish.position.y = 0.007;
@@ -1281,83 +1364,38 @@
                 this.candleFlame.position.y = 0.28;
                 candleGroup.add(this.candleFlame);
 
+                this.candleGroup = candleGroup;
                 this.tallerGroup.add(candleGroup);
 
-                // --- ESTANTE DE PARED RÚSTICO ---
-                const shelfGroup = new THREE.Group();
-                const shelfMesh = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.04, 0.22), new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.85 }));
-                shelfMesh.position.set(0, 1.35, -1.12); 
-                shelfMesh.castShadow = true;
-                shelfMesh.receiveShadow = true;
-                shelfGroup.add(shelfMesh);
+                // Ajustar Y de lámpara y vela al topY real de la mesa (cuando esté disponible)
+                this._setupLampAndCandleOnTable();
 
-                const leftBracket = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.2), brassMat);
-                leftBracket.position.set(-0.6, 1.29, -1.17);
-                leftBracket.castShadow = true;
-                shelfGroup.add(leftBracket);
+                // Los estantes fueron eliminados — no se crean.
+                // workshopShelfSurfaces queda vacío, solo la mesa como superficie.
+                this.workshopShelfSurfaces = [];
+            }
 
-                const rightBracket = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.2), brassMat);
-                rightBracket.position.set(0.6, 1.29, -1.17);
-                rightBracket.castShadow = true;
-                shelfGroup.add(rightBracket);
+            _setupLampAndCandleOnTable() {
+                if (this.workshopTableSurface) {
+                    const topY = this.workshopTableSurface.topY;
+                    if (this.lampGroup)   this.lampGroup.position.y   = topY;
+                    if (this.candleGroup) this.candleGroup.position.y = topY;
+                } else {
+                    setTimeout(() => this._setupLampAndCandleOnTable(), 100);
+                }
+            }
 
-                this.tallerGroup.add(shelfGroup);
-                this.workshopShelfSurfaces = this.workshopShelfSurfaces || [];
-                this.workshopShelfSurfaces.push({ minX: -0.9, maxX: 0.9, minZ: -1.26, maxZ: -0.98, topY: 1.40 });
-                this.registerStaticSurface(-0.675, 0.675, -1.23, -1.01, 1.37);
-
-                // --- REPISA BAJA PARA JUGUETES ---
-                const lowerShelfGroup = new THREE.Group();
-                const lowerShelf = new THREE.Mesh(
-                    new THREE.BoxGeometry(1.05, 0.045, 0.20),
-                    new THREE.MeshStandardMaterial({ color: 0x4a2a18, roughness: 0.85 })
-                );
-                lowerShelf.position.set(-0.82, 1.05, -1.02);
-                lowerShelf.castShadow = true;
-                lowerShelf.receiveShadow = true;
-                lowerShelfGroup.add(lowerShelf);
-
-                const lowerBracketA = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.16, 0.18), brassMat);
-                lowerBracketA.position.set(-1.35, 0.97, -1.04);
-                lowerBracketA.castShadow = true;
-                lowerShelfGroup.add(lowerBracketA);
-
-                const lowerBracketB = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.16, 0.18), brassMat);
-                lowerBracketB.position.set(-0.49, 0.97, -1.04);
-                lowerBracketB.castShadow = true;
-                lowerShelfGroup.add(lowerBracketB);
-
-                this.tallerGroup.add(lowerShelfGroup);
-                this.workshopShelfSurfaces = this.workshopShelfSurfaces || [];
-                this.workshopShelfSurfaces.push({ minX: -1.22, maxX: -0.22, minZ: -1.12, maxZ: -0.92, topY: 1.0725 });
-                this.registerStaticSurface(-1.22, -0.22, -1.12, -0.92, 1.0725);
-
-                // --- SOPORTE LATERAL / CAJÓN DE EXHIBICIÓN ---
-                const sideDisplay = new THREE.Group();
-                const displayTop = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.55, 0.05, 0.42),
-                    new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.85 })
-                );
-                displayTop.position.set(1.18, 0.64, -0.98);
-                displayTop.rotation.y = -0.08;
-                displayTop.castShadow = true;
-                displayTop.receiveShadow = true;
-                sideDisplay.add(displayTop);
-
-                const displayBase = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.50, 0.40, 0.38),
-                    new THREE.MeshStandardMaterial({ color: 0x332015, roughness: 0.9 })
-                );
-                displayBase.position.set(1.18, 0.36, -0.98);
-                displayBase.rotation.y = -0.08;
-                displayBase.castShadow = true;
-                displayBase.receiveShadow = true;
-                sideDisplay.add(displayBase);
-
-                this.tallerGroup.add(sideDisplay);
-                this.workshopShelfSurfaces = this.workshopShelfSurfaces || [];
-                this.workshopShelfSurfaces.push({ minX: 0.90, maxX: 1.46, minZ: -1.20, maxZ: -0.76, topY: 0.665 });
-                this.registerStaticSurface(0.90, 1.46, -1.20, -0.76, 0.665);
+            _setupPedestalOnTable() {
+                if (this.workshopTableSurface) {
+                    const topY = this.workshopTableSurface.topY;
+                    if (this.pedestalGroup) {
+                        this.pedestalGroup.position.y = topY + 0.02;
+                        // Actualizar también el centro de detección
+                        this.pedestalCenter.set(0, topY + 0.02, -0.5);
+                    }
+                } else {
+                    setTimeout(() => this._setupPedestalOnTable(), 100);
+                }
             }
 
             createDustMotes() {
@@ -1434,7 +1472,7 @@
                         if (btn) {
                             btn.removeAttribute('disabled');
                             btn.classList.remove('opacity-40');
-                            btn.classList.add('hover:bg-amber-800/40', 'hover:border-amber-500/50', 'bg-amber-950/40');
+                            btn.classList.add('hover:bg-[#4C5C2D]/50', 'hover:border-[#718348]/50', 'bg-[#4C5C2D]/30');
                         }
 
                         this.checkAllTemplatesLoaded();
@@ -1466,16 +1504,26 @@
                 if (btn) {
                     btn.removeAttribute('disabled');
                     btn.classList.remove('opacity-40');
-                    btn.classList.add('hover:bg-amber-800/40', 'hover:border-amber-500/50', 'bg-amber-950/40');
+                    btn.classList.add('hover:bg-[#4C5C2D]/50', 'hover:border-[#718348]/50', 'bg-[#4C5C2D]/30');
                 }
                 this.checkAllTemplatesLoaded();
             }
 
             checkAllTemplatesLoaded() {
-                const allLoaded = Object.values(toyTemplates).every(t => t !== null);
-                if (allLoaded && this.objects.length === 0) {
-                    this.spawnInitialToys();
-                }
+                // El flag dedicado dentro de trySpawnInitialToys evita doble spawn,
+                // así que no usamos objects.length (que ya incluye el taburete y room).
+                this.trySpawnInitialToys();
+            }
+
+            trySpawnInitialToys() {
+                // Evitar doble spawn con flag dedicado
+                if (this._initialToysSpawned) return;
+                // Necesitamos tanto la mesa como los 4 templates listos
+                const allTemplatesReady = Object.values(toyTemplates).every(t => t !== null);
+                if (!allTemplatesReady) return; // los templates llaman a esto cuando estén
+                if (!this.workshopTableSurface) return; // el escritorio llama a esto cuando esté
+                this._initialToysSpawned = true;
+                this.spawnInitialToys();
             }
 
             spawnToy(type, customX, customZ, customY) {
@@ -1490,21 +1538,20 @@
                     uuid: THREE.MathUtils.generateUUID()
                 };
 
+                // Usar topY real del escritorio, con fallback a 0.88
+                const tableTopY = this.workshopTableSurface?.topY ?? 0.88;
+
                 let x = customX !== undefined ? customX : (Math.random() - 0.5) * 1.0;
                 let z = customZ !== undefined ? customZ : -0.5 + (Math.random() - 0.5) * 0.5;
-                let y = customY !== undefined ? customY : 0.9;
+                // Posicionar exactamente sobre la superficie de la mesa
+                let y = customY !== undefined ? customY : tableTopY + 0.05;
 
-                if (type === 'plane' && customY === undefined) {
-                    y = 1.8;
-                    newToy.userData.isFlying = true;
-                }
-
+                // El avión ya NO vuela — aparece sobre la mesa como los demás
                 newToy.position.set(x, y, z);
-                newToy.rotation.y = Math.random() * Math.PI * 2;
 
                 this.tallerGroup.add(newToy);
                 this.objects.push(newToy);
-                this.registerPhysicsObject(newToy, 0.88);
+                this.registerPhysicsObject(newToy, tableTopY);
 
                 if (newToy.userData.isFlying) {
                     this.playSparkleSound();
@@ -1551,33 +1598,108 @@
                 crateGroup.scale.set(scale, scale, scale);
                 this.tallerGroup.add(crateGroup);
                 this.objects.push(crateGroup);
-                this.registerPhysicsObject(crateGroup, 0.88);
+                this.registerPhysicsObject(crateGroup, this.workshopTableSurface?.topY ?? 0.88);
 
                 return crateGroup;
             }
 
             spawnInitialToys() {
-                const train = this.spawnToy('train', -0.82, -1.02, 1.10);
-                if (train) train.rotation.y = -Math.PI / 8;
+                const tableTopY = this.workshopTableSurface?.topY ?? 0.88;
+                const onTable = tableTopY + 0.04;
 
-                const boat = this.spawnToy('boat', 0.55, -1.12, 1.43);
-                if (boat) boat.rotation.y = Math.PI / 7;
+                // Juguetes en grilla 2×2, lado derecho de la mesa
+                // Fila trasera: Z ≈ -0.72   Fila delantera: Z ≈ -0.50
+                // Col izquierda: X ≈ 0.28   Col derecha: X ≈ 0.55
+                const train = this.spawnToy('train', 0.28, -0.72, onTable);
+                if (train) train.rotation.y = Math.PI / 8;
 
-                const truck = this.spawnToy('truck', 1.18, -0.98, 0.69);
-                if (truck) truck.rotation.y = -Math.PI / 5;
+                const boat  = this.spawnToy('boat',  0.55, -0.72, onTable);
+                if (boat)  boat.rotation.y  = -Math.PI / 10;
 
-                const plane = this.spawnToy('plane', 0.05, -1.12, 1.43);
+                const truck = this.spawnToy('truck', 0.28, -0.50, onTable);
+                if (truck) truck.rotation.y = Math.PI / 12;
+
+                // Avión en la mesa, no vuela
+                const plane = this.spawnToy('plane', 0.55, -0.50, onTable);
                 if (plane) {
-                    plane.userData.flightAngle = Math.PI * 1.1;
-                    plane.rotation.y = Math.PI / 2;
+                    plane.userData.isFlying = false;
+                    plane.rotation.y = -Math.PI / 6;
                 }
 
-                this.spawnMovableCrate(-1.22, -1.02, 1.10, 0.9, Math.PI / 8);
-                this.spawnMovableCrate(-0.55, 0.02, 0.04, 1.0, -Math.PI / 7);
-                this.spawnMovableCrate(0.72, 0.08, 0.04, 0.85, Math.PI / 5);
+                // ── CAJAS EN EL PISO — todas agrupadas en esquina izquierda-trasera ──
+                // Cada caja mide 0.34m de alto. Pisos: 0.00 / 0.34 / 0.68
+                // Columna A — fondo izquierdo
+                this.spawnFloorCrate(-1.20, -1.10, 0.00, 1.0,  Math.PI / 10);
+                this.spawnFloorCrate(-1.20, -1.10, 0.34, 1.0,  Math.PI / 10);
+                this.spawnFloorCrate(-1.20, -1.10, 0.68, 1.0,  Math.PI / 12);
+
+                // Columna B — al lado de A (mismo fondo, X desplazada ~0.37m)
+                this.spawnFloorCrate(-0.82, -1.10, 0.00, 1.0, -Math.PI / 9);
+                this.spawnFloorCrate(-0.82, -1.10, 0.34, 1.0, -Math.PI / 9);
+                this.spawnFloorCrate(-0.82, -1.10, 0.68, 0.95,-Math.PI / 11);
+
+                // Columna C — segunda fila (Z desplazada ~0.37m hacia adelante)
+                this.spawnFloorCrate(-1.20, -0.72, 0.00, 1.0,  Math.PI / 8);
+                this.spawnFloorCrate(-1.20, -0.72, 0.34, 1.0,  Math.PI / 8);
+
+                // Columna D — segunda fila, lado derecho del grupo
+                this.spawnFloorCrate(-0.82, -0.72, 0.00, 1.0, -Math.PI / 7);
+                this.spawnFloorCrate(-0.82, -0.72, 0.34, 0.95,-Math.PI / 7);
+
+                // 3 cajas extra encima para dar volumen al montón
+                this.spawnFloorCrate(-1.01, -1.10, 0.68, 0.9,  Math.PI / 6);
+                this.spawnFloorCrate(-1.01, -0.72, 0.34, 0.9, -Math.PI / 5);
+                this.spawnFloorCrate(-1.20, -0.72, 0.68, 0.85, Math.PI / 4);
+            }
+
+            // Caja posicionada en el piso (Y calculado desde altura de caja)
+            spawnFloorCrate(x, z, stackOffsetY, scale = 1, rotationY = 0) {
+                const crateGroup = new THREE.Group();
+                crateGroup.userData = {
+                    type: 'crate',
+                    isFlying: false,
+                    uuid: THREE.MathUtils.generateUUID()
+                };
+
+                const crateMat = new THREE.MeshStandardMaterial({ color: 0x6b4428, roughness: 0.88 });
+                const trimMat  = new THREE.MeshStandardMaterial({ color: 0x2f1d12, roughness: 0.8 });
+
+                // Caja grande: ~tamaño de taburete (0.35m de lado)
+                const baseH = 0.34 * scale;
+                const baseW = 0.35 * scale;
+                const body = new THREE.Mesh(new THREE.BoxGeometry(baseW, baseH, baseW), crateMat);
+                body.position.y = baseH / 2;
+                body.castShadow = true;
+                body.receiveShadow = true;
+                crateGroup.add(body);
+
+                const bw = 0.03 * scale;
+                const bandGeoX = new THREE.BoxGeometry(baseW + 0.02 * scale, 0.03 * scale, bw);
+                const bandGeoZ = new THREE.BoxGeometry(bw, 0.03 * scale, baseW + 0.02 * scale);
+                [-0.10 * scale, 0.10 * scale].forEach(offset => {
+                    const bx = new THREE.Mesh(bandGeoX, trimMat);
+                    bx.position.set(0, baseH * 0.5, offset);
+                    bx.castShadow = true;
+                    crateGroup.add(bx);
+                    const bz = new THREE.Mesh(bandGeoZ, trimMat);
+                    bz.position.set(offset, baseH * 0.5, 0);
+                    bz.castShadow = true;
+                    crateGroup.add(bz);
+                });
+
+                // Y en el piso: stackOffsetY acumula altura de cajas anteriores en la pila
+                crateGroup.position.set(x, stackOffsetY, z);
+                crateGroup.rotation.y = rotationY;
+                this.tallerGroup.add(crateGroup);
+                this.objects.push(crateGroup);
+                // floorY = 0 (piso)
+                this.registerPhysicsObject(crateGroup, 0.0);
+
+                return crateGroup;
             }
 
             clearToys() {
+                this._initialToysSpawned = false;
                 this.clearStaticSurfaces();
                 this.objects.forEach(obj => {
                     this.tallerGroup.remove(obj);
@@ -1605,6 +1727,8 @@
                         obj.mesh === this.selectedTrainObject ||
                         obj.mesh === this.selectedTruckObject ||
                         obj.mesh === this.selectedSkyObject ||
+                        obj.mesh === this.heldObjectLeft ||
+                        obj.mesh === this.heldObjectRight ||
                         obj.mesh.userData.isFlying ||
                         obj.mesh.userData.installed
                     ) {
@@ -1651,9 +1775,9 @@
                             const onSurface =
                                 box2.max.x > surf.minX && box2.min.x < surf.maxX &&
                                 box2.max.z > surf.minZ && box2.min.z < surf.maxZ &&
-                                box2.min.y <= surf.topY + 0.04 &&
-                                box2.min.y >= surf.topY - 0.04 &&
-                                obj.velocity.y <= 0.02;
+                                box2.min.y <= surf.topY + 0.12 &&
+                                box2.min.y >= surf.topY - 0.12 &&
+                                obj.velocity.y <= 0.05;
                             if (onSurface) {
                                 obj.mesh.position.y += surf.topY - box2.min.y;
                                 obj.velocity.y = 0;
@@ -1681,9 +1805,20 @@
                         const a = this.physicsObjects[i];
                         const b = this.physicsObjects[j];
                         if (!a.mesh?.parent || !b.mesh?.parent) continue;
+
+                        // No resolver colisión entre objetos en niveles distintos
+                        // (ej: juguetes sobre la mesa vs cajas en el piso)
+                        const floorDiff = Math.abs((a.floorY ?? 0) - (b.floorY ?? 0));
+                        if (floorDiff > 0.3) continue;
+
                         const boxA = new THREE.Box3().setFromObject(a.mesh);
                         const boxB = new THREE.Box3().setFromObject(b.mesh);
                         if (!boxA.intersectsBox(boxB)) continue;
+
+                        // Solo resolver si el overlap real es significativo (evita falsos positivos de GLB bounds grandes)
+                        const overlapCheckX = Math.min(boxA.max.x, boxB.max.x) - Math.max(boxA.min.x, boxB.min.x);
+                        const overlapCheckZ = Math.min(boxA.max.z, boxB.max.z) - Math.max(boxA.min.z, boxB.min.z);
+                        if (overlapCheckX < 0.02 || overlapCheckZ < 0.02) continue;
 
                         if (a.resting && b.resting) continue;
                         const aWasResting = a.resting;
@@ -1826,10 +1961,6 @@
                         return;
                     }
 
-                    if (this.activeTravelToy === 'truck' && this.handleTruckScenePointerDown()) {
-                        return;
-                    }
-
                     if (this.leverModel) {
                         const intersectsExit = this.raycaster.intersectObject(this.leverModel, true);
                         if (intersectsExit.length > 0) {
@@ -1885,11 +2016,6 @@
 
                 if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'train') {
                     this.handleTrainScenePointerMove();
-                    return;
-                }
-
-                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'truck') {
-                    this.handleTruckScenePointerMove();
                     return;
                 }
 
@@ -1956,11 +2082,6 @@
                     return;
                 }
 
-                if (this.currentSceneState === 'viaje' && this.activeTravelToy === 'truck') {
-                    this.handleTruckScenePointerUp();
-                    return;
-                }
-
                 if (this.currentSceneState !== 'taller') return;
                 this.releaseSelectedWorkshopToy();
             }
@@ -1981,7 +2102,8 @@
 
 
                 const chestHit = this.chestGroup ? this.raycaster.intersectObject(this.chestGroup, true) : [];
-                if (chestHit.length > 0 && !this.chestGroup.userData.open) {
+                if (chestHit.length > 0 && !this.chestGroup.userData.open && !this.chestGroup.userData.busy) {
+                    this.chestGroup.userData.busy = true;
                     this.chestGroup.userData.open = true;
                     this.chestGroup.userData.lidTargetRotX = -Math.PI * 0.62;
                     this.spawnChestItems();
@@ -2036,7 +2158,7 @@
                     const snapPos = new THREE.Vector3(basePos.x, 0.56, basePos.z + 0.08);
                     if (obj.position.distanceTo(snapPos) < 0.38) {
                         obj.position.copy(snapPos);
-                        obj.rotation.set(0, Math.PI, 0);
+                        obj.rotation.set(0, 0, 0);
                         obj.userData.installed = true;
                         this.boatWheelInstalled = true;
                         this.playClinkSound();
@@ -2182,6 +2304,7 @@
                 this._pendingExitButton = null;
                 this.trainBoarded = false;
                 this.trainJustBoarded = false;
+                this.trainInnerLights = [];
                 this.lastTrainSteamTime = 0;
                 this.truckSceneRoot = null;
                 this.truckInteractiveObjects = [];
@@ -2266,9 +2389,6 @@
                         this.finalizeTransition();
                     } else if (config.fallback === 'rails') {
                         this.buildProceduralTrainScene();
-                        this.finalizeTransition();
-                    } else if (config.fallback === 'road') {
-                        this.buildProceduralTruckScene();
                         this.finalizeTransition();
                     } else {
                         this.buildPlaceholderScene(toyType, config);
@@ -2360,45 +2480,102 @@
                 group.name = 'exit-pillar';
                 group.userData = { type: 'exitPillar' };
 
-                const mat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.4, metalness: 0.6 });
-                const glowMat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, emissive: 0x00b0d4, emissiveIntensity: 1.2, roughness: 0.2 });
+                // Madera oscura para el pilar
+                const woodDark = new THREE.MeshStandardMaterial({ color: 0x3b2410, roughness: 0.85, metalness: 0.0 });
+                // Madera media para el panel
+                const woodPanel = new THREE.MeshStandardMaterial({ color: 0x6b3f1e, roughness: 0.78, metalness: 0.0 });
+                // Marco / borde tallado más claro
+                const woodFrame = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.7, metalness: 0.0 });
 
-                const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 1.1, 6), mat);
+                // Pilar octogonal de madera
+                const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.10, 1.1, 8), woodDark);
                 pillar.position.y = 0.55;
                 pillar.castShadow = true;
                 group.add(pillar);
 
-                const base = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.07, 6), mat);
+                // Base
+                const base = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.20, 0.07, 8), woodDark);
                 base.position.y = 0.035;
                 base.castShadow = true;
                 group.add(base);
 
-                const panel = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.18, 0.06), mat);
+                // Panel de madera (fondo del cartel)
+                const panel = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.20, 0.05), woodPanel);
                 panel.position.y = 1.18;
                 panel.castShadow = true;
                 group.add(panel);
 
-                const glow = new THREE.Mesh(new THREE.BoxGeometry(0.57, 0.2, 0.04), glowMat);
-                glow.position.set(0, 1.18, -0.02);
-                group.add(glow);
+                // Marco alrededor del cartel (4 listones delgados)
+                const frameH = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.025, 0.055), woodFrame);
+                const frameHb = frameH.clone();
+                frameH.position.set(0, 1.18 + 0.11, 0);
+                frameHb.position.set(0, 1.18 - 0.11, 0);
+                group.add(frameH, frameHb);
+                const frameV = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.22, 0.055), woodFrame);
+                const frameVr = frameV.clone();
+                frameV.position.set(-0.30, 1.18, 0);
+                frameVr.position.set(0.30, 1.18, 0);
+                group.add(frameV, frameVr);
 
-                const texture = this.createXRTextTexture('SALIDA', 512, 192, {
-                    size: 72,
-                    background: 'rgba(0, 229, 255, 0.95)',
-                    color: '#061018'
-                });
+                // Texto SALIDA con fuente Inter, estilo tallado (letras oscuras sobre madera)
+                const texture = this.createWoodSignTexture('SALIDA');
                 const textPanel = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.48, 0.14),
+                    new THREE.PlaneGeometry(0.50, 0.16),
                     new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide })
                 );
-                textPanel.position.set(0, 1.18, 0.035);
+                textPanel.position.set(0, 1.18, 0.028);
                 group.add(textPanel);
 
-                const light = new THREE.PointLight(0x00e5ff, 0.6, 1.8);
-                light.position.set(0, 1.2, 0.2);
+                // Luz cálida tenue (vela / lámpara de madera)
+                const light = new THREE.PointLight(0xe8c97a, 0.5, 1.5);
+                light.position.set(0, 1.35, 0.25);
                 group.add(light);
 
                 return group;
+            }
+
+            createWoodSignTexture(text) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 160;
+                const ctx = canvas.getContext('2d');
+
+                // Fondo: degradado de madera
+                const grad = ctx.createLinearGradient(0, 0, 0, 160);
+                grad.addColorStop(0,   '#8b5a2b');
+                grad.addColorStop(0.3, '#7a4f24');
+                grad.addColorStop(0.7, '#6b3f1e');
+                grad.addColorStop(1,   '#5a3018');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, 512, 160);
+
+                // Vetas de madera horizontales
+                ctx.strokeStyle = 'rgba(255,200,120,0.08)';
+                ctx.lineWidth = 1;
+                for (let y = 8; y < 160; y += 12) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y + Math.random() * 4);
+                    ctx.bezierCurveTo(128, y - 3, 384, y + 3, 512, y);
+                    ctx.stroke();
+                }
+
+                // Texto estilo tallado: sombra oscura + texto crema
+                ctx.font = '700 68px Inter, Arial, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // Sombra tallada (efecto de grabado)
+                ctx.fillStyle = 'rgba(30, 15, 5, 0.6)';
+                ctx.fillText(text, 258, 82);
+
+                // Texto principal crema
+                ctx.fillStyle = '#FFF4F5';
+                ctx.fillText(text, 256, 80);
+
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.colorSpace = THREE.SRGBColorSpace;
+                tex.needsUpdate = true;
+                return tex;
             }
 
             loadLeverModel() {
@@ -2413,7 +2590,7 @@
                 this.leverModel = this.createExitPillar();
 
                 if (this.activeTravelToy === 'boat' && this.boatSceneRoot) {
-                    this.leverModel.position.set(0.0, 0.05, -0.88);
+                    this.leverModel.position.set(-0.9, 0.05, -1.72);
                     this.boatSceneRoot.add(this.leverModel);
                 } else if (this.activeTravelToy === 'train' && this.trainSceneRoot) {
                     this.leverModel.position.set(0.95, 0.0, 0.55);
@@ -2634,11 +2811,39 @@
             createFullScaleTrainConsist() {
                 const consist = new THREE.Group();
                 consist.name = 'formacion-tren-escala-persona';
-                consist.position.set(0, 0.08, -1.18);
-                consist.rotation.y = 0;
-                consist.userData.baseY = consist.position.y;
+                // Spawn SOBRE las vías (círculo de radio 6.5), no al lado del usuario.
+                // Lo ubicamos en el punto del círculo más cercano al andén (ángulo = PI/2 → frente al usuario)
+                const TR = 6.5;
+                const a0 = Math.PI / 2; // punto del círculo frente al andén
+                this.trainCircuitAngle = a0;
+                consist.position.set(Math.cos(a0) * TR, 0.09, Math.sin(a0) * TR);
+                // Orientación tangente al círculo (simula tren sobre rieles)
+                consist.rotation.y = -(a0 + Math.PI / 2) + Math.PI;
+                consist.userData.baseY = 0.09;
                 this.trainLargeModel = consist;
                 this.trainSceneRoot.add(consist);
+
+                // Luces internas de color que emanan desde adentro del tren (laten y ciclan color)
+                this.trainInnerLights = [];
+                const innerPositions = [
+                    new THREE.Vector3(0, 0.7, 0.0),    // cabina
+                    new THREE.Vector3(0, 0.5, -1.0),   // vagón 1
+                    new THREE.Vector3(0, 0.5, -1.9)    // vagón 2
+                ];
+                innerPositions.forEach(pos => {
+                    const light = new THREE.PointLight(0xff66cc, 0, 1.8, 2);
+                    light.position.copy(pos);
+                    consist.add(light);
+                    this.trainInnerLights.push(light);
+                    // Pequeño núcleo emisivo visible que irradia el color
+                    const core = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.06, 12, 8),
+                        new THREE.MeshBasicMaterial({ color: 0xff66cc, transparent: true, opacity: 0.85 })
+                    );
+                    core.position.copy(pos);
+                    light.userData.core = core;
+                    consist.add(core);
+                });
 
                 const cabHeight = 1.32;
                 const carGap = 0.15;
@@ -2768,29 +2973,30 @@
             }
 
             boardTrainFromStation() {
+                // Arranca el tren (NO sube al usuario; la cámara queda fija en el andén)
                 this.trainBoarded = true;
                 if (this.trainBoardSwitch?.userData.button) {
                     this.trainBoardSwitch.userData.button.position.z = 0.045;
                     this.trainBoardSwitch.userData.button.material.color.setHex(0xffd166);
                     this.trainBoardSwitch.userData.button.material.emissive.setHex(0xffa000);
                 }
-
-                xb.core.camera.position.set(0.0, 1.55, -1.05);
-                xb.core.camera.lookAt(new THREE.Vector3(0.0, 1.1, -1.6));
+                // Semáforo en VERDE mientras el tren se mueve
+                this.trainSignalState = 'green';
+                this.updateTrainSignalLights();
                 this.playLeverClickSound();
-                this.trainJustBoarded = true;
-                setTimeout(() => { this.trainJustBoarded = false; }, 4000);
             }
 
             exitTrainToPlatform() {
+                // Detiene el tren (la cámara nunca se movió, sigue en el andén)
                 this.trainBoarded = false;
-                xb.core.camera.position.set(0, 1.65, 1.0);
-                xb.core.camera.lookAt(new THREE.Vector3(1.31, 1.1, 0));
                 if (this.trainBoardSwitch?.userData.button) {
                     this.trainBoardSwitch.userData.button.position.z = 0.065;
                     this.trainBoardSwitch.userData.button.material.color.setHex(0x39ff75);
                     this.trainBoardSwitch.userData.button.material.emissive.setHex(0x1aff55);
                 }
+                // Semáforo en ROJO cuando el tren está quieto
+                this.trainSignalState = 'red';
+                this.updateTrainSignalLights();
                 this.playLeverClickSound();
             }
             addTrainObject(object, movable = false) {
@@ -2907,7 +3113,12 @@
 
                 const switchHit = this.trainBoardSwitch ? this.raycaster.intersectObject(this.trainBoardSwitch, true) : [];
                 if (switchHit.length > 0) {
-                    this.boardTrainFromStation();
+                    // Toggle: arranca o detiene el tren
+                    if (this.trainBoarded) {
+                        this.exitTrainToPlatform();
+                    } else {
+                        this.boardTrainFromStation();
+                    }
                     return true;
                 }
 
@@ -3063,7 +3274,8 @@
             }
 
             animateTrainScene(elapsedTime) {
-                if (elapsedTime - this.lastTrainSteamTime > 0.28) {
+                // Humo SOLO cuando el tren se mueve
+                if (this.trainBoarded && elapsedTime - this.lastTrainSteamTime > 0.28) {
                     this.lastTrainSteamTime = elapsedTime;
                     this.createTrainSteamPuff();
                 }
@@ -3082,40 +3294,47 @@
                     }
                 });
                 this.trainSteamPuffs = alive;
+
                 if (this.trainLargeModel && this.trainBoarded) {
+                    // SOLO el tren se mueve por el circuito; la cámara queda fija en el andén
                     this.trainCircuitAngle += 0.004;
                     const r = 6.5;
                     const a = this.trainCircuitAngle;
-                    this.trainLargeModel.position.set(
-                        Math.cos(a) * r,
-                        0.09,
-                        Math.sin(a) * r
-                    );
-                    this.trainLargeModel.rotation.y = -(a + Math.PI / 2);
+                    const px = Math.cos(a) * r;
+                    const pz = Math.sin(a) * r;
+                    this.trainLargeModel.position.set(px, 0.09, pz);
+
+                    // Simular tren real: el frente mira hacia el SIGUIENTE punto de la curva
+                    // (dirección tangente), recalculado en cada frame según por dónde va.
+                    const aNext = a + 0.02;
+                    const nx = Math.cos(aNext) * r;
+                    const nz = Math.sin(aNext) * r;
+                    const heading = Math.atan2(nx - px, nz - pz); // ángulo hacia el punto siguiente
+                    this.trainLargeModel.rotation.y = heading;
                     this.trainLargeModel.rotation.z = 0;
-
-                    xb.core.camera.position.set(
-                        Math.cos(a) * r,
-                        0.09 + 1.55,
-                        Math.sin(a) * r
-                    );
-                    const lookTarget = new THREE.Vector3(
-                        Math.cos(a + 0.12) * r,
-                        0.09 + 1.2,
-                        Math.sin(a + 0.12) * r
-                    );
-                    xb.core.camera.lookAt(lookTarget);
-
-                    const platformAngle = Math.PI;
-                    const angleDiff = Math.abs(((a % (Math.PI * 2)) - platformAngle + Math.PI * 3) % (Math.PI * 2) - Math.PI);
-                    if (angleDiff < 0.06 && !this.trainJustBoarded) {
-                        this.exitTrainToPlatform();
-                        return;
-                    }
                 } else if (this.trainLargeModel) {
-                    const baseY = this.trainLargeModel.userData.baseY || 0.08;
+                    const baseY = this.trainLargeModel.userData.baseY || 0.09;
                     this.trainLargeModel.position.y = baseY;
                     this.trainLargeModel.rotation.z = 0;
+                }
+
+                // Pulso de color interno del tren (las luces internas laten y ciclan color)
+                if (this.trainInnerLights && this.trainBoarded) {
+                    const pulse = 1.6 + Math.sin(elapsedTime * 4.0) * 0.5;
+                    this.trainInnerLights.forEach((light, i) => {
+                        light.intensity = pulse;
+                        const hue = (elapsedTime * 0.12 + i * 0.33) % 1;
+                        light.color.setHSL(hue, 0.85, 0.55);
+                        if (light.userData.core) {
+                            light.userData.core.material.color.setHSL(hue, 0.85, 0.6);
+                            light.userData.core.material.opacity = 0.85;
+                        }
+                    });
+                } else if (this.trainInnerLights) {
+                    this.trainInnerLights.forEach(light => {
+                        light.intensity = 0;
+                        if (light.userData.core) light.userData.core.material.opacity = 0;
+                    });
                 }
 
                 if (this.trainLantern) {
@@ -3264,7 +3483,7 @@
                 if (this.leverModel && this.leverModel.parent !== this.boatSceneRoot) {
                     if (this.leverModel.parent) this.leverModel.parent.remove(this.leverModel);
                     this.boatSceneRoot.add(this.leverModel);
-                    this.leverModel.position.set(0.0, 0.05, -0.88);
+                    this.leverModel.position.set(-0.9, 0.05, -1.72);
                     this.leverModel.rotation.set(0, 0, 0);
                     this.leverModel.scale.set(1, 1, 1);
                 }
@@ -3308,16 +3527,19 @@
                     helperGroup.add(marker);
                 };
 
-                makeWall('left', new THREE.Vector3(0.03, 1.2, 1.9), new THREE.Vector3(-1.15, 0.6, 0.0), 0xff6b6b);
-                makeWall('right', new THREE.Vector3(0.03, 1.2, 1.9), new THREE.Vector3(1.15, 0.6, 0.0), 0x5dade2);
-                makeWall('back', new THREE.Vector3(2.3, 1.2, 0.03), new THREE.Vector3(0.0, 0.6, -1.10), 0x58d68d);
-                makeWall('front-edge', new THREE.Vector3(2.3, 1.2, 0.03), new THREE.Vector3(0.0, 0.6, 0.95), 0xf4d03f);
+                // Rojo (izquierda, eje X): alejado un poco más del centro
+                makeWall('left', new THREE.Vector3(0.03, 1.2, 3.9), new THREE.Vector3(-1.45, 0.6, -0.30), 0xff6b6b);
+                makeWall('right', new THREE.Vector3(0.03, 1.2, 3.9), new THREE.Vector3(1.15, 0.6, -0.30), 0x5dade2);
+                // Verde (pared trasera, eje Z): alejada del centro + un poco más, y expandida en X
+                makeWall('back', new THREE.Vector3(2.9, 1.2, 0.03), new THREE.Vector3(-0.15, 0.6, -1.80), 0x58d68d);
+                // Amarillo (pared frontal, eje Z): alejada del centro hacia adelante, expandida en X
+                makeWall('front-edge', new THREE.Vector3(2.9, 1.2, 0.03), new THREE.Vector3(0.0, 0.6, 1.95), 0xf4d03f);
 
                 const floorOutline = new THREE.LineSegments(
-                    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.3, 0.01, 1.9)),
+                    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.9, 0.01, 3.9)),
                     new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.65 })
                 );
-                floorOutline.position.set(0, 0.0, 0.0);
+                floorOutline.position.set(-0.15, 0.0, 0.075);
                 helperGroup.add(floorOutline);
 
                 this.boatWallHelpers = helperGroup;
@@ -3329,8 +3551,9 @@
                     [-0.86, 0.0, -0.50, 0.0]
                 ];
                 this.boatBigCrates = [];
+                let bigCrateTopY = 0.56;
                 bigCratePositions.forEach(data => {
-                    const crate = this.createBoatCrate(0.94);
+                    const crate = this.createBoatCrate(1.88); // doble del tamaño anterior (era 0.94)
                     crate.position.set(data[0], data[1], data[2]);
                     crate.rotation.y = data[3];
                     crate.userData.movable = false;
@@ -3338,12 +3561,14 @@
                     crate.updateWorldMatrix(true, true);
                     const crateBox = new THREE.Box3().setFromObject(crate);
                     this.registerStaticSurface(crateBox.min.x, crateBox.max.x, crateBox.min.z, crateBox.max.z, crateBox.max.y);
+                    bigCrateTopY = crateBox.max.y;
                     this.boatBigCrates.push(crate);
                 });
 
+                // Velas apoyadas sobre las cajas (ahora más altas)
                 const candleSpawns = [
-                    [-0.86, 0.28, -0.84],
-                    [-0.86, 0.28, -0.50]
+                    [-0.86, bigCrateTopY, -0.84],
+                    [-0.86, bigCrateTopY, -0.50]
                 ];
                 this.boatCandles = [];
                 candleSpawns.forEach(pos => {
@@ -3437,9 +3662,10 @@
             }
             loadBoatChestAndTreasures() {
                 if (!this.boatSceneRoot) return;
-                const loader = new GLTFLoader();
+
+                // Cofre generado proceduralmente — paleta del taller (maderas + herrajes dorados)
                 const chestGroup = new THREE.Group();
-                chestGroup.name = 'cofre-pirata-separado';
+                chestGroup.name = 'cofre-pirata-procedural';
                 chestGroup.position.set(0.58, 0.0, -0.84);
                 chestGroup.rotation.y = -Math.PI / 2.6;
                 chestGroup.userData = {
@@ -3447,90 +3673,100 @@
                     open: false,
                     lid: null,
                     lidTargetRotX: 0,
-                    lidCurrentRotX: 0
+                    lidCurrentRotX: 0,
+                    busy: false
                 };
                 this.boatSceneRoot.add(chestGroup);
                 this.boatInteractiveObjects.push(chestGroup);
                 this.chestGroup = chestGroup;
 
-                loader.load(modelUrls.cofreBody, gltf => {
-                    const body = gltf.scene;
-                    body.name = 'cuerpo-cofre';
-                    const box = new THREE.Box3().setFromObject(body);
-                    const currentHeight = Math.max(box.max.y - box.min.y, 0.001);
-                    const targetHeight = Math.min((0.74 * 0.65) / 1.5, 0.34);
-                    const scaleFactor = targetHeight / currentHeight;
-                    body.scale.set(scaleFactor * 0.74, scaleFactor * 0.88, scaleFactor * 0.74);
-                    body.position.y = -box.min.y * scaleFactor;
-                    body.traverse(child => {
-                        if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                        }
-                    });
-                    chestGroup.add(body);
-                    const bodyGuide = this.createChestDimensionGuide(new THREE.Vector3(0.34, targetHeight, 0.24), 0xff8c69);
-                    bodyGuide.position.set(0, targetHeight / 2, 0);
-                    chestGroup.add(bodyGuide);
-                    chestGroup.userData.bodyHeight = targetHeight;
-                }, undefined, () => {
-                    const targetHeight = Math.min((0.74 * 0.65) / 1.5, 0.34);
-                    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x5a3216, roughness: 0.85, flatShading: true });
-                    const body = new THREE.Mesh(new THREE.BoxGeometry(0.34, targetHeight, 0.24), bodyMat);
-                    body.position.y = targetHeight / 2;
-                    body.castShadow = true;
-                    body.receiveShadow = true;
-                    chestGroup.add(body);
-                    const bodyGuide = this.createChestDimensionGuide(new THREE.Vector3(0.34, targetHeight, 0.24), 0xff8c69);
-                    bodyGuide.position.set(0, targetHeight / 2, 0);
-                    chestGroup.add(bodyGuide);
-                    chestGroup.userData.bodyHeight = targetHeight;
+                // Materiales acordes a la paleta del taller
+                const woodMat   = new THREE.MeshStandardMaterial({ color: 0x6b3f1e, roughness: 0.8, metalness: 0.05, flatShading: true });
+                const woodDark  = new THREE.MeshStandardMaterial({ color: 0x3b2410, roughness: 0.85, metalness: 0.05, flatShading: true });
+                const brassMat  = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3, metalness: 0.85 });
+
+                // Dimensiones del cofre
+                const W = 0.46, H = 0.30, D = 0.32; // ancho, alto cuerpo, profundidad
+                // El grupo entero se escala (reducido un poco respecto al doble)
+                chestGroup.scale.setScalar(1.5);
+                // bodyHeight en coordenadas del mundo (afectado por la escala del grupo)
+                chestGroup.userData.bodyHeight = H * 1.5;
+
+                // --- CUERPO ---
+                const body = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), woodMat);
+                body.position.y = H / 2;
+                body.castShadow = true; body.receiveShadow = true;
+                chestGroup.add(body);
+
+                // --- INTERIOR NEGRO (simula cofre vacío) ---
+                // Caja interior oscura, ligeramente más chica, abierta hacia arriba
+                const innerMat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide });
+                const innerW = W * 0.86, innerD = D * 0.78, innerH = H * 0.9;
+                const innerBox = new THREE.Mesh(new THREE.BoxGeometry(innerW, innerH, innerD), innerMat);
+                innerBox.position.y = H / 2 + 0.012; // apenas sobresale para verse al abrir
+                chestGroup.add(innerBox);
+                // Tapa del fondo interior bien negra (suelo del cofre)
+                const innerFloor = new THREE.Mesh(
+                    new THREE.PlaneGeometry(innerW, innerD),
+                    new THREE.MeshBasicMaterial({ color: 0x000000 })
+                );
+                innerFloor.rotation.x = -Math.PI / 2;
+                innerFloor.position.y = H * 0.18;
+                chestGroup.add(innerFloor);
+
+                // Listones de madera oscura verticales en las esquinas
+                const cornerGeo = new THREE.BoxGeometry(0.035, H + 0.005, 0.035);
+                [[-W/2+0.02, D/2-0.02], [W/2-0.02, D/2-0.02], [-W/2+0.02, -D/2+0.02], [W/2-0.02, -D/2+0.02]].forEach(c => {
+                    const post = new THREE.Mesh(cornerGeo, woodDark);
+                    post.position.set(c[0], H/2, c[1]);
+                    post.castShadow = true;
+                    chestGroup.add(post);
                 });
 
-
-                loader.load(modelUrls.cofreLid, gltf => {
-                    const lid = gltf.scene;
-                    lid.name = 'tapa-cofre';
-                    const box = new THREE.Box3().setFromObject(lid);
-                    const lidHeight = Math.max(box.max.y - box.min.y, 0.001);
-                    const targetLidHeight = (0.92 * 0.35) / 1.5;
-                    const scaleFactor = targetLidHeight / lidHeight;
-                    lid.scale.setScalar(scaleFactor);
-                    const lidBaseOffset = box.min.y * scaleFactor;
-                    lid.traverse(child => {
-                        if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                        }
-                    });
-                    const lidPivot = new THREE.Group();
-                    lidPivot.name = 'bisagra-tapa-cofre';
-                    const bodyHeight = chestGroup.userData.bodyHeight || 0.45;
-                    lidPivot.position.set(0, bodyHeight - lidBaseOffset, -0.18);
-                    chestGroup.add(lidPivot);
-                    lid.position.set(0, -lidBaseOffset - 0.13, 0.13);
-                    lidPivot.add(lid);
-                    const lidGuide = this.createChestDimensionGuide(new THREE.Vector3(0.42, targetLidHeight, 0.28), 0x6ee7ff);
-                    lidGuide.position.set(0, targetLidHeight * 0.2, 0.13);
-                    lidPivot.add(lidGuide);
-                    chestGroup.userData.lid = lidPivot;
-                }, undefined, () => {
-                    const lidMat = new THREE.MeshStandardMaterial({ color: 0x3d2008, roughness: 0.8, flatShading: true });
-                    const lid = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.085, 0.28), lidMat);
-                    lid.name = 'tapa-cofre-respaldo';
-                    lid.castShadow = true;
-                    lid.receiveShadow = true;
-                    const lidPivot = new THREE.Group();
-                    lidPivot.name = 'bisagra-tapa-cofre-respaldo';
-                    lidPivot.position.set(0, 0.22, -0.18);
-                    chestGroup.add(lidPivot);
-                    lid.position.set(0, -0.13, 0.13);
-                    lidPivot.add(lid);
-                    const lidGuide = this.createChestDimensionGuide(new THREE.Vector3(0.42, targetLidHeight, 0.28), 0x6ee7ff);
-                    lidGuide.position.set(0, targetLidHeight * 0.2, 0.13);
-                    lidPivot.add(lidGuide);
-                    chestGroup.userData.lid = lidPivot;
+                // Bandas metálicas doradas horizontales en el cuerpo
+                [H * 0.30, H * 0.72].forEach(by => {
+                    const bandFB = new THREE.Mesh(new THREE.BoxGeometry(W + 0.01, 0.03, 0.02), brassMat);
+                    bandFB.position.set(0, by, D/2 + 0.001);
+                    chestGroup.add(bandFB);
+                    const bandFB2 = bandFB.clone(); bandFB2.position.z = -D/2 - 0.001;
+                    chestGroup.add(bandFB2);
+                    const bandLR = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.03, D + 0.01), brassMat);
+                    bandLR.position.set(W/2 + 0.001, by, 0);
+                    chestGroup.add(bandLR);
+                    const bandLR2 = bandLR.clone(); bandLR2.position.x = -W/2 - 0.001;
+                    chestGroup.add(bandLR2);
                 });
+
+                // Cerradura dorada al frente
+                const lock = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.09, 0.025), brassMat);
+                lock.position.set(0, H * 0.55, D/2 + 0.012);
+                lock.castShadow = true;
+                chestGroup.add(lock);
+
+                // --- TAPA con bisagra (pivot en la parte trasera-superior) ---
+                const lidPivot = new THREE.Group();
+                lidPivot.name = 'bisagra-tapa-cofre';
+                lidPivot.position.set(0, H, -D/2); // bisagra en el borde trasero superior
+                chestGroup.add(lidPivot);
+
+                const lidH = 0.12;
+                // Tapa con forma de tapa abovedada (caja + prisma superior)
+                const lidBase = new THREE.Mesh(new THREE.BoxGeometry(W, lidH * 0.5, D), woodMat);
+                lidBase.position.set(0, lidH * 0.25, D/2); // relativo al pivot
+                lidBase.castShadow = true;
+                lidPivot.add(lidBase);
+
+                const lidTop = new THREE.Mesh(new THREE.BoxGeometry(W * 0.86, lidH * 0.5, D * 0.7), woodDark);
+                lidTop.position.set(0, lidH * 0.7, D/2);
+                lidTop.castShadow = true;
+                lidPivot.add(lidTop);
+
+                // Banda dorada sobre la tapa
+                const lidBand = new THREE.Mesh(new THREE.BoxGeometry(W + 0.01, 0.025, 0.02), brassMat);
+                lidBand.position.set(0, lidH * 0.45, D/2 + 0.001);
+                lidPivot.add(lidBand);
+
+                chestGroup.userData.lid = lidPivot;
             }
 
             createChestDimensionGuide(size, color = 0xffffff) {
@@ -3554,59 +3790,79 @@
                 ];
                 const pick = items[Math.floor(Math.random() * items.length)];
                 const loader = new GLTFLoader();
-                loader.load(pick.url, gltf => {
-                    const obj = gltf.scene;
-                    obj.name = `objeto-magico-${pick.name}`;
-                    obj.scale.setScalar(0.4);
-                    const bodyHeight = this.chestGroup?.userData?.bodyHeight || 0.26;
-                    const startPos = this.chestGroup.position.clone().add(new THREE.Vector3(0, bodyHeight + 0.03, 0));
-                    const endPos = startPos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.12, 0, 0.34));
-                    obj.position.copy(startPos);
-                    obj.userData = { type: 'boatItem', name: pick.name, overboard: false, movable: true };
-                    obj.traverse(child => {
-                        if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
+
+                // Secuencia: la tapa YA se está abriendo (lidTargetRotX seteado en el trigger).
+                // Esperamos ~450ms a que termine de abrir, luego tiramos el objeto, y al
+                // aterrizar cerramos la tapa.
+                setTimeout(() => {
+                    loader.load(pick.url, gltf => {
+                        const obj = gltf.scene;
+                        obj.name = `objeto-magico-${pick.name}`;
+                        obj.scale.setScalar(1.8); // reducido un poco respecto a 2.4
+                        const bodyHeight = this.chestGroup?.userData?.bodyHeight || 0.45;
+                        const startPos = this.chestGroup.position.clone().add(new THREE.Vector3(0, bodyHeight + 0.10, 0));
+                        const endPos = startPos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.30, 0, 0.70));
+                        obj.position.copy(startPos);
+                        obj.userData = { type: 'boatItem', name: pick.name, overboard: false, movable: true };
+                        obj.traverse(child => {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                            }
+                        });
+                        this.boatSceneRoot.add(obj);
+                        this.boatInteractiveObjects.push(obj);
+                        this.boatMovableObjects.push(obj);
+                        this.playSparkleSound();
+
+                        // Animación de salto del objeto (arco hacia afuera del cofre)
+                        let t = 0;
+                        const jump = setInterval(() => {
+                            if (!obj.parent || !this.chestGroup) {
+                                clearInterval(jump);
+                                return;
+                            }
+                            t = Math.min(t + 0.03, 1);
+                            obj.position.lerpVectors(startPos, endPos, t);
+                            obj.position.y = startPos.y + Math.sin(t * Math.PI) * 1.1;
+                            obj.rotation.y += 0.12;
+                            obj.rotation.z += 0.05;
+                            if (t >= 1) {
+                                clearInterval(jump);
+                                obj.position.y = Math.max(obj.position.y, 0.40);
+                                this.registerPhysicsObject(obj, 0.0);
+                                const phys = this.physicsObjects.find(p => p.mesh === obj);
+                                if (phys) {
+                                    phys.velocity.set((endPos.x - startPos.x) * 1.5, 0.05, 0.22);
+                                    phys.resting = false;
+                                }
+                                // Cerrar la tapa una vez que el objeto salió
+                                setTimeout(() => {
+                                    if (this.chestGroup?.userData) {
+                                        this.chestGroup.userData.lidTargetRotX = 0;
+                                        this.chestGroup.userData.open = false;
+                                        this.chestGroup.userData.busy = false;
+                                        this.playClinkSound();
+                                    }
+                                }, 600);
+                            }
+                        }, 16);
+                    }, undefined, () => {
+                        // Si falla la carga, igual cerramos la tapa para no quedar trabados
+                        if (this.chestGroup?.userData) {
+                            this.chestGroup.userData.lidTargetRotX = 0;
+                            this.chestGroup.userData.open = false;
+                            this.chestGroup.userData.busy = false;
                         }
                     });
-                    this.boatSceneRoot.add(obj);
-                    this.boatInteractiveObjects.push(obj);
-                    this.boatMovableObjects.push(obj);
-
-                    let t = 0;
-                    const jump = setInterval(() => {
-                        if (!obj.parent || !this.chestGroup) {
-                            clearInterval(jump);
-                            return;
-                        }
-                        t = Math.min(t + 0.035, 1);
-                        obj.position.lerpVectors(startPos, endPos, t);
-                        obj.position.y = startPos.y + Math.sin(t * Math.PI) * 0.7;
-                        obj.rotation.y += 0.12;
-                        obj.rotation.z += 0.05;
-                        if (t >= 1) {
-                            clearInterval(jump);
-                            obj.position.y = Math.max(obj.position.y, 0.26);
-                            this.registerPhysicsObject(obj, 0.0);
-                            const phys = this.physicsObjects.find(p => p.mesh === obj);
-                            if (phys) {
-                                phys.velocity.set((endPos.x - startPos.x) * 1.5, 0.05, 0.18);
-                                phys.resting = false;
-                            }
-                            setTimeout(() => {
-                                if (this.chestGroup?.userData) {
-                                    this.chestGroup.userData.lidTargetRotX = 0;
-                                    this.chestGroup.userData.open = false;
-                                }
-                            }, 1200);
-                        }
-                    }, 16);
-                });
+                }, 450);
             }
             loadBoatWheelSet() {
                 this.loadScaledModel(modelUrls.timonBase, 0.807, (base) => {
                     base.name = 'base-timon-fija';
-                    base.position.set(0.0, 0.0, 0.80);
+                    // Pegado al borde verde (z=-1.80)
+                    base.position.set(0.4, 0.0, -1.66);
+                    // Rotado 90° respecto a antes, mirando hacia adentro
                     base.rotation.y = 0;
                     base.userData = { type: 'boatWheelBase' };
                     this.boatWheelBase = base;
@@ -3615,7 +3871,9 @@
 
                 this.loadScaledModel(modelUrls.timon, 0.55, (wheel) => {
                     wheel.name = 'timon-suelto';
-                    wheel.position.set(0.0, 0.12, 0.58);
+                    // Cerca del borde verde, frente a su base
+                    wheel.position.set(0.4, 0.12, -1.42);
+                    // Rotado 90° respecto a antes; cara hacia adentro de la escena (+Z)
                     wheel.rotation.set(0, 0, 0);
                     wheel.userData = { type: 'boatWheel', movable: true, installed: false };
                     this.boatWheel = wheel;
@@ -3692,7 +3950,8 @@
                 machine.userData = { type: 'cloudMachine' };
                 this.cloudMachine = machine;
                 this.viajeGroup.add(machine);
-                this.createDispenserPreviewCloud();
+                // Dispenser automático: la primera nube sale enseguida
+                this._cloudAutoTimer = 420;
             }
 
             createSkyCoin() {
@@ -3887,20 +4146,31 @@
 
             dispenseCloud() {
                 const cloud = this.createSingleFallbackCloud();
-                cloud.position.set(0, 0.22, -0.08);
-                cloud.scale.setScalar(0.25);
+                // Sale desde la boca del dispenser
+                const machinePos = this.cloudMachine ? this.cloudMachine.position.clone() : new THREE.Vector3(0, 0.52, -0.65);
+                cloud.position.set(machinePos.x, machinePos.y + 0.65, machinePos.z + 0.35);
+                cloud.scale.setScalar(0.75);
                 cloud.userData = {
                     type: 'dispensedCloud',
                     age: 0,
-                    groundedTime: 300,
-                    lifespan: 420,
+                    phase: Math.random() * Math.PI * 2,
+                    flyingAway: false,
+                    // 1 minuto en el piso (a ~60fps) antes de irse volando
+                    groundedFrames: 3600,
                     targetScale: 0.75,
-                    sizeStep: 1,
-                    driftSpeed: 0.004,
-                    phase: Math.random() * Math.PI * 2
+                    sizeStep: 1
                 };
                 this.dispensedClouds.push(cloud);
                 this.viajeGroup.add(cloud);
+
+                // Cae al piso con gravedad real (sistema de física), floorY = 0
+                this.registerPhysicsObject(cloud, 0.0);
+                const phys = this.physicsObjects.find(p => p.mesh === cloud);
+                if (phys) {
+                    phys.velocity.set((Math.random() - 0.5) * 0.1, 0.0, 0.15);
+                    phys.resting = false;
+                }
+                this.playSparkleSound();
             }
 
             createDispenserPreviewCloud() {
@@ -4074,426 +4344,8 @@
                 });
             }
 
-            buildProceduralTruckScene() {
-                this.truckSceneRoot = new THREE.Group();
-                this.truckSceneRoot.name = 'escenario-camion-procedural';
-                this.truckInteractiveObjects = [];
-                this.truckMovableObjects = [];
-                this.truckRoadLines = [];
-                this.truckTrees = [];
-                this.truckSignalState = 'red';
+            // --- Escenario del camión eliminado: el camión es solo un juguete sostenible ---
 
-                xb.core.scene.background = new THREE.Color(0xf4845f);
-                xb.core.scene.fog = new THREE.FogExp2(0xf6a177, 0.035);
-
-                const roadMat = new THREE.MeshStandardMaterial({ color: 0x1b1b1f, roughness: 0.86 });
-                const lineMat = new THREE.MeshStandardMaterial({ color: 0xf6c445, roughness: 0.45, emissive: 0x332200, emissiveIntensity: 0.15 });
-                const dirtMat = new THREE.MeshStandardMaterial({ color: 0x7a5a38, roughness: 0.92, flatShading: true });
-                const hillMat = new THREE.MeshStandardMaterial({ color: 0x8f7b47, roughness: 0.95, flatShading: true });
-
-                const ground = new THREE.Mesh(new THREE.PlaneGeometry(32, 32, 8, 8), dirtMat);
-                ground.rotation.x = -Math.PI / 2;
-                ground.position.y = -0.025;
-                ground.receiveShadow = true;
-                this.truckSceneRoot.add(ground);
-
-                const road = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 34, 8, 48), roadMat);
-                road.rotation.x = -Math.PI / 2;
-                road.position.set(0, 0, -5.5);
-                road.receiveShadow = true;
-                this.truckSceneRoot.add(road);
-
-                for (let i = 0; i < 16; i++) {
-                    const dash = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.015, 0.8), lineMat);
-                    dash.position.set(0, 0.018, 8 - i * 1.8);
-                    dash.castShadow = false;
-                    this.truckRoadLines.push(dash);
-                    this.truckSceneRoot.add(dash);
-                }
-
-                for (let i = 0; i < 12; i++) {
-                    [-1, 1].forEach(side => {
-                        const hill = new THREE.Mesh(new THREE.ConeGeometry(1.2 + Math.random() * 1.4, 0.7 + Math.random() * 0.8, 5), hillMat);
-                        hill.position.set(side * (5.2 + Math.random() * 5), 0.25, 7 - i * 2.6 + Math.random() * 0.8);
-                        hill.rotation.y = Math.random() * Math.PI;
-                        hill.castShadow = true;
-                        hill.receiveShadow = true;
-                        this.truckSceneRoot.add(hill);
-                    });
-                }
-
-                const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a341d, roughness: 0.85 });
-                const leafMat = new THREE.MeshStandardMaterial({ color: 0x31572c, roughness: 0.9, flatShading: true });
-                for (let i = 0; i < 14; i++) {
-                    const tree = new THREE.Group();
-                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.65, 6), trunkMat);
-                    trunk.position.y = 0.32;
-                    const crown = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.85, 6), leafMat);
-                    crown.position.y = 0.92;
-                    tree.add(trunk, crown);
-                    tree.position.set((i % 2 === 0 ? -1 : 1) * (4.2 + Math.random() * 3), 0, 6.5 - i * 1.55);
-                    tree.userData.spin = (Math.random() > 0.5 ? 1 : -1) * (0.0007 + Math.random() * 0.001);
-                    this.truckTrees.push(tree);
-                    this.truckSceneRoot.add(tree);
-                }
-
-                this.truckWheelSnapPoints = this.createTruckWheelSnapPoints();
-                this.resetTruckAssemblyCycle();
-
-                [[-1.6, 0.08, 2.8], [1.65, 0.08, 2.1], [-1.45, 0.08, 0.2], [1.45, 0.08, -1.1]].forEach(pos => {
-                    const cone = this.createTrafficCone();
-                    cone.position.set(pos[0], pos[1], pos[2]);
-                    this.addTruckObject(cone, true);
-                });
-
-                const fuelCan = this.createFuelCan();
-                fuelCan.position.set(-1.75, 0.16, -2.45);
-                this.addTruckObject(fuelCan, true);
-
-                const sign = this.createRoadSign('RUTA 7', 'Taller 2 km');
-                sign.position.set(2.6, 0, -3.2);
-                this.addTruckObject(sign, false);
-
-                this.truckSignal = this.createTruckTrafficLight();
-                this.truckSignal.position.set(-2.35, 0, -0.8);
-                this.addTruckObject(this.truckSignal, false);
-                this.updateTruckSignalLights();
-
-                this.viajeGroup.add(this.truckSceneRoot);
-                xb.core.camera.position.set(0, 1.65, 5.2);
-                xb.core.camera.lookAt(new THREE.Vector3(0, 0.85, -4.2));
-            }
-
-            createTruckWheelSnapPoints() {
-                return [
-                    new THREE.Vector3(-0.92, 0.34, 0.55),
-                    new THREE.Vector3(0.92, 0.34, 0.55),
-                    new THREE.Vector3(-0.92, 0.34, 1.85),
-                    new THREE.Vector3(0.92, 0.34, 1.85)
-                ];
-            }
-
-            resetTruckAssemblyCycle() {
-                if (!this.truckSceneRoot) return;
-                if (this.truckResetTimeout) {
-                    clearTimeout(this.truckResetTimeout);
-                    this.truckResetTimeout = null;
-                }
-                if (this.truckLargeModel) {
-                    this.truckSceneRoot.remove(this.truckLargeModel);
-                    this.truckLargeModel = null;
-                }
-                (this.truckWheels || []).forEach(wheel => {
-                    this.unregisterPhysicsObject(wheel);
-                    this.truckSceneRoot.remove(wheel);
-                    this.truckInteractiveObjects = this.truckInteractiveObjects.filter(obj => obj !== wheel);
-                    this.truckMovableObjects = this.truckMovableObjects.filter(obj => obj !== wheel);
-                });
-                this.truckWheels = [];
-                this.loadLandingTruckModel();
-                this.createLooseTruckWheels();
-            }
-
-            loadLandingTruckModel() {
-                const loader = new GLTFLoader();
-                loader.load(modelUrls.camionSinRueda, gltf => {
-                    if (!this.truckSceneRoot) return;
-                    const truck = gltf.scene;
-                    truck.name = 'camion-sin-ruedas-aterrizando';
-                    truck.traverse(child => {
-                        if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                        }
-                    });
-                    const box = new THREE.Box3().setFromObject(truck);
-                    const size = box.getSize(new THREE.Vector3());
-                    const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-                    const scaleFactor = 3.2 / maxDim;
-                    const center = box.getCenter(new THREE.Vector3());
-                    truck.scale.setScalar(scaleFactor);
-                    truck.position.set(-center.x * scaleFactor, 12, 1.2 - center.z * scaleFactor);
-                    truck.rotation.y = Math.PI;
-                    truck.userData = {
-                        baseY: 0.25,
-                        landed: false,
-                        landingSoundPlayed: false,
-                        departing: false,
-                        resetScheduled: false
-                    };
-                    this.truckLargeModel = truck;
-                    this.truckSceneRoot.add(truck);
-                }, undefined, () => {
-                    if (!this.truckSceneRoot) return;
-                    const truck = this.createFallbackTruckModel();
-                    truck.name = 'camion-respaldo-sin-ruedas-aterrizando';
-                    truck.position.set(0, 12, 1.2);
-                    truck.rotation.y = Math.PI;
-                    truck.userData.baseY = 0.25;
-                    truck.userData.landed = false;
-                    truck.userData.landingSoundPlayed = false;
-                    truck.userData.departing = false;
-                    truck.userData.resetScheduled = false;
-                    this.truckLargeModel = truck;
-                    this.truckSceneRoot.add(truck);
-                });
-            }
-
-            createLooseTruckWheels() {
-                const wheelSpawns = [
-                    [-1.0, 0.15, 2.5],
-                    [1.2, 0.15, 1.8],
-                    [-0.8, 0.15, 0.3],
-                    [1.1, 0.15, -0.5]
-                ];
-                const loader = new GLTFLoader();
-                wheelSpawns.forEach((pos, index) => {
-                    const addWheel = (wheel) => {
-                        wheel.name = `rueda-camion-${index + 1}`;
-                        wheel.position.set(pos[0], pos[1], pos[2]);
-                        wheel.rotation.set(Math.PI / 2, 0, 0);
-                        wheel.userData = { type: 'truckWheel', movable: true, installed: false, wheelIndex: index };
-                        wheel.traverse?.(child => {
-                            if (child.isMesh) {
-                                child.castShadow = true;
-                                child.receiveShadow = true;
-                            }
-                        });
-                        this.truckWheels.push(wheel);
-                        this.addTruckObject(wheel, true);
-                        this.registerPhysicsObject(wheel, 0.0);
-                    };
-                    loader.load(modelUrls.camionRueda, gltf => {
-                        const wheel = gltf.scene;
-                        const box = new THREE.Box3().setFromObject(wheel);
-                        const size = box.getSize(new THREE.Vector3());
-                        const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-                        wheel.scale.setScalar(0.48 / maxDim);
-                        addWheel(wheel);
-                    }, undefined, () => {
-                        const fallbackWheel = new THREE.Group();
-                        const tire = new THREE.Mesh(
-                            new THREE.CylinderGeometry(0.23, 0.23, 0.16, 20),
-                            new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.75 })
-                        );
-                        tire.rotation.z = Math.PI / 2;
-                        const hub = new THREE.Mesh(
-                            new THREE.CylinderGeometry(0.09, 0.09, 0.18, 16),
-                            new THREE.MeshStandardMaterial({ color: 0xb8b8b8, metalness: 0.5, roughness: 0.35 })
-                        );
-                        hub.rotation.z = Math.PI / 2;
-                        fallbackWheel.add(tire, hub);
-                        addWheel(fallbackWheel);
-                    });
-                });
-            }
-            createFallbackTruckModel() {
-                const group = new THREE.Group();
-                const bodyMat = new THREE.MeshStandardMaterial({ color: 0xb8322b, roughness: 0.55, metalness: 0.1 });
-                const cabMat = new THREE.MeshStandardMaterial({ color: 0xe76f51, roughness: 0.5 });
-                const tireMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.75 });
-                const body = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.55, 1.15), bodyMat);
-                body.position.set(0, 0.55, 0.25);
-                const cab = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.72, 0.95), cabMat);
-                cab.position.set(0, 0.72, -0.65);
-                group.add(body, cab);
-                [-0.72, 0.72].forEach(x => [-0.28, 0.78].forEach(z => {
-                    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.16, 18), tireMat);
-                    tire.rotation.z = Math.PI / 2;
-                    tire.position.set(x, 0.24, z);
-                    group.add(tire);
-                }));
-                group.userData.baseY = group.position.y;
-                return group;
-            }
-
-            createTrafficCone() {
-                const group = new THREE.Group();
-                group.userData = { type: 'truckCone', movable: true };
-                const orange = new THREE.MeshStandardMaterial({ color: 0xff6b1a, roughness: 0.55, flatShading: true });
-                const white = new THREE.MeshStandardMaterial({ color: 0xf8f4e3, roughness: 0.4 });
-                const base = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.05, 0.38), orange);
-                base.position.y = 0.025;
-                const cone = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.48, 18), orange);
-                cone.position.y = 0.29;
-                const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.135, 0.045, 18), white);
-                stripe.position.y = 0.27;
-                group.add(base, cone, stripe);
-                return group;
-            }
-
-            createFuelCan() {
-                const group = new THREE.Group();
-                group.userData = { type: 'fuelCan', movable: true };
-                const canMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.5, metalness: 0.25 });
-                const dark = new THREE.MeshStandardMaterial({ color: 0x1f1f1f, roughness: 0.65 });
-                const body = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.55, 0.24), canMat);
-                body.position.y = 0.3;
-                const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.12, 12), dark);
-                cap.position.set(0.13, 0.62, 0);
-                cap.rotation.z = Math.PI / 2;
-                const handle = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.018, 8, 18, Math.PI), dark);
-                handle.position.y = 0.62;
-                handle.rotation.x = Math.PI;
-                group.add(body, cap, handle);
-                return group;
-            }
-
-            createRoadSign(title, subtitle) {
-                const group = new THREE.Group();
-                group.userData = { type: 'roadSign' };
-                const metal = new THREE.MeshStandardMaterial({ color: 0x43464b, roughness: 0.45, metalness: 0.35 });
-                const post = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.4, 10), metal);
-                post.position.y = 0.7;
-                const texture = this.createXRTextTexture(`${title}\n${subtitle}`, 512, 256, { size: 42, background: 'rgba(27, 94, 32, 0.96)', color: '#f7f7d4' });
-                const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 0.58), new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide }));
-                sign.position.y = 1.35;
-                sign.rotation.y = -Math.PI / 10;
-                group.add(post, sign);
-                return group;
-            }
-
-            createTruckTrafficLight() {
-                const group = new THREE.Group();
-                group.userData = { type: 'truckSignal' };
-                const metal = new THREE.MeshStandardMaterial({ color: 0x20242a, roughness: 0.42, metalness: 0.45 });
-                const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.35, 12), metal);
-                post.position.y = 0.68;
-                const head = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.58, 0.16), metal);
-                head.position.y = 1.42;
-                group.userData.redLight = new THREE.Mesh(new THREE.SphereGeometry(0.075, 16, 12), new THREE.MeshStandardMaterial({ color: 0x330000, emissive: 0x330000, emissiveIntensity: 0.2 }));
-                group.userData.greenLight = new THREE.Mesh(new THREE.SphereGeometry(0.075, 16, 12), new THREE.MeshStandardMaterial({ color: 0x003300, emissive: 0x003300, emissiveIntensity: 0.2 }));
-                group.userData.redLight.position.set(0, 1.52, 0.09);
-                group.userData.greenLight.position.set(0, 1.32, 0.09);
-                group.add(post, head, group.userData.redLight, group.userData.greenLight);
-                return group;
-            }
-
-            updateTruckSignalLights() {
-                if (!this.truckSignal) return;
-                const red = this.truckSignal.userData.redLight;
-                const green = this.truckSignal.userData.greenLight;
-                const redActive = this.truckSignalState === 'red';
-                red.material.color.setHex(redActive ? 0xff2222 : 0x330000);
-                red.material.emissive.setHex(redActive ? 0xff1111 : 0x220000);
-                red.material.emissiveIntensity = redActive ? 1.5 : 0.15;
-                green.material.color.setHex(redActive ? 0x003300 : 0x2dff68);
-                green.material.emissive.setHex(redActive ? 0x002200 : 0x1cff4f);
-                green.material.emissiveIntensity = redActive ? 0.15 : 1.5;
-            }
-
-            addTruckObject(object, movable = false) {
-                this.truckInteractiveObjects.push(object);
-                if (movable) this.truckMovableObjects.push(object);
-                if (this.truckSceneRoot) this.truckSceneRoot.add(object);
-                else this.viajeGroup.add(object);
-            }
-
-            handleTruckScenePointerDown() {
-                if (!this.truckInteractiveObjects.length) return false;
-                const signalHit = this.truckSignal ? this.raycaster.intersectObject(this.truckSignal, true) : [];
-                if (signalHit.length > 0) {
-                    this.truckSignalState = this.truckSignalState === 'red' ? 'green' : 'red';
-                    this.updateTruckSignalLights();
-                    this.playClinkSound();
-                    return true;
-                }
-                const intersects = this.raycaster.intersectObjects(this.truckMovableObjects, true);
-                if (intersects.length === 0) return false;
-                let target = intersects[0].object;
-                while (target.parent && !this.truckMovableObjects.includes(target)) target = target.parent;
-                if (!this.truckMovableObjects.includes(target)) return false;
-                this.selectedTruckObject = target;
-                const currentY = this.selectedTruckObject.position.y;
-                this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, currentY, 0));
-                if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
-                    this.offset.copy(this.selectedTruckObject.position).sub(this.intersectionPoint);
-                }
-                this.selectedTruckObject.position.y += 0.05;
-                this.playWobbleSound();
-                return true;
-            }
-
-            handleTruckScenePointerMove() {
-                if (!this.selectedTruckObject) return;
-                if (this.currentInputSource !== 'xr') this.raycaster.setFromCamera(this.mouse, xb.core.camera);
-                const targetY = Math.max(0.08, this.selectedTruckObject.position.y);
-                this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, targetY, 0));
-                if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
-                    this.selectedTruckObject.position.set(
-                        Math.max(-2.4, Math.min(2.4, this.intersectionPoint.x + this.offset.x)),
-                        targetY,
-                        Math.max(-5.2, Math.min(4.4, this.intersectionPoint.z + this.offset.z))
-                    );
-                }
-            }
-
-            handleTruckScenePointerUp() {
-                if (!this.selectedTruckObject) return;
-                const obj = this.selectedTruckObject;
-
-                if (obj.userData.type === 'truckWheel' && !obj.userData.installed) {
-                    const snapPoint = this.truckWheelSnapPoints?.[obj.userData.wheelIndex];
-                    if (snapPoint && obj.position.distanceTo(snapPoint) < 0.35) {
-                        obj.position.copy(snapPoint);
-                        obj.userData.installed = true;
-                        obj.visible = false;
-                        this.unregisterPhysicsObject(obj);
-                        this.playClinkSound();
-                        this.selectedTruckObject = null;
-
-                        const wheelsInstalled = (this.truckWheels || []).length === 4 && this.truckWheels.every(wheel => wheel.userData.installed);
-                        if (wheelsInstalled && this.truckLargeModel) {
-                            this.truckLargeModel.userData.departing = true;
-                        }
-                        return;
-                    }
-                }
-
-                obj.position.y = Math.max(0.08, obj.position.y - 0.05);
-                this.applyPhysicsReleaseImpulse(obj);
-                this.playClinkSound();
-                this.selectedTruckObject = null;
-            }
-            animateTruckScene(elapsedTime) {
-                this.truckRoadLines.forEach(line => {
-                    line.position.z += 0.08;
-                    if (line.position.z > 8.4) line.position.z = -19.0;
-                });
-                if (this.truckLargeModel) {
-                    const baseY = this.truckLargeModel.userData.baseY || 0.25;
-                    if (!this.truckLargeModel.userData.landed) {
-                        this.truckLargeModel.position.y = Math.max(baseY, this.truckLargeModel.position.y - 0.04);
-                        if (this.truckLargeModel.position.y <= baseY + 0.001) {
-                            this.truckLargeModel.position.y = baseY;
-                            this.truckLargeModel.userData.landed = true;
-                            if (!this.truckLargeModel.userData.landingSoundPlayed) {
-                                this.truckLargeModel.userData.landingSoundPlayed = true;
-                                this.playClinkSound();
-                            }
-                        }
-                    } else if (this.truckLargeModel.userData.departing) {
-                        this.truckLargeModel.position.z -= 0.03;
-                        this.truckLargeModel.position.y = baseY + Math.sin(elapsedTime * 10) * 0.02;
-                        this.truckLargeModel.rotation.z = Math.sin(elapsedTime * 8) * 0.01;
-                        if (this.truckLargeModel.position.z < -25 && !this.truckLargeModel.userData.resetScheduled) {
-                            this.truckLargeModel.userData.resetScheduled = true;
-                            this.truckResetTimeout = setTimeout(() => {
-                                this.truckResetTimeout = null;
-                                if (this.activeTravelToy === 'truck' && this.truckSceneRoot) {
-                                    this.resetTruckAssemblyCycle();
-                                }
-                            }, 1500);
-                        }
-                    } else {
-                        this.truckLargeModel.position.y = baseY;
-                        this.truckLargeModel.rotation.z = Math.sin(elapsedTime * 8) * 0.006;
-                    }
-                }
-                this.truckTrees.forEach(tree => {
-                    tree.rotation.y += tree.userData.spin || 0.001;
-                });
-            }
             buildPlaceholderScene(toyType, config) {
                 const sceneGroup = new THREE.Group();
                 const colors = {
@@ -4663,36 +4515,55 @@
                     if (this.dispensedClouds && this.dispensedClouds.length > 0) {
                         const aliveClouds = [];
                         this.dispensedClouds.forEach(cloud => {
-                            cloud.userData.age += 0.016;
-                            if (!cloud.userData.isPreview && cloud.userData.age > cloud.userData.groundedTime) {
-                                cloud.position.y += 0.0035;
-                                cloud.position.x += cloud.userData.driftSpeed || 0.004;
-                            } else if (cloud.userData.isPreview) {
-                                cloud.position.y = 1.0 + Math.sin(elapsedTime * 1.3) * 0.025;
-                            }
+                            cloud.userData.age += 1;
                             cloud.rotation.y += 0.004;
 
-                            const targetScale = cloud.userData.targetScale || 0.75;
-                            cloud.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.05);
+                            const phys = this.physicsObjects.find(p => p.mesh === cloud);
+                            const onGround = phys && (phys.resting || phys.onGround);
 
-                            const dissolveStart = cloud.userData.groundedTime || (cloud.userData.lifespan * 0.62);
-                            if (cloud.userData.age > dissolveStart) {
-                                const opacity = Math.max(0, 1 - ((cloud.userData.age - dissolveStart) / (cloud.userData.lifespan - dissolveStart)));
+                            if (!cloud.userData.flyingAway) {
+                                // Mientras está en el piso (apoyada), cuenta el tiempo
+                                if (onGround) {
+                                    cloud.userData.groundedFrames -= 1;
+                                }
+                                // Cumplido el minuto: se va volando
+                                if (cloud.userData.groundedFrames <= 0) {
+                                    cloud.userData.flyingAway = true;
+                                    this.unregisterPhysicsObject(cloud);
+                                }
+                            } else {
+                                // Volando hacia arriba y desvaneciéndose
+                                cloud.position.y += 0.02;
+                                cloud.position.x += 0.006;
+                                cloud.userData.fadeAge = (cloud.userData.fadeAge || 0) + 1;
+                                const opacity = Math.max(0, 1 - cloud.userData.fadeAge / 180);
                                 cloud.traverse(child => {
                                     if (child.material) {
                                         child.material.opacity = opacity * 0.92;
                                         child.material.transparent = true;
                                     }
                                 });
+                                if (opacity <= 0) {
+                                    this.unregisterPhysicsObject(cloud);
+                                    this.viajeGroup.remove(cloud);
+                                    return; // no la agregamos a aliveClouds
+                                }
                             }
 
-                            if (cloud.userData.age < cloud.userData.lifespan) {
-                                aliveClouds.push(cloud);
-                            } else {
-                                this.viajeGroup.remove(cloud);
-                            }
+                            const targetScale = cloud.userData.targetScale || 0.75;
+                            cloud.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.05);
+                            aliveClouds.push(cloud);
                         });
                         this.dispensedClouds = aliveClouds;
+                    }
+
+                    // Dispenser automático: suelta una nube cada ~8 segundos
+                    if (this.cloudMachine) {
+                        this._cloudAutoTimer = (this._cloudAutoTimer || 0) + 1;
+                        if (this._cloudAutoTimer >= 480) {
+                            this._cloudAutoTimer = 0;
+                            this.dispenseCloud();
+                        }
                     }
 
                     if (this.largePlaneModel) {
@@ -4706,10 +4577,6 @@
 
                     if (this.activeTravelToy === 'train') {
                         this.animateTrainScene(elapsedTime);
-                    }
-
-                    if (this.activeTravelToy === 'truck') {
-                        this.animateTruckScene(elapsedTime);
                     }
 
                     // Efecto titileo de luz de camarote
@@ -4866,7 +4733,7 @@
 
                     if (this.candleLight.visible) {
                         btnCandle.innerHTML = `<i data-lucide="flame" class="w-3.5 h-3.5 text-orange-500 fill-orange-500"></i> Vela: Encendida`;
-                        btnCandle.className = "py-1.5 px-2 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-600/40 hover:border-amber-500 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition";
+                        btnCandle.className = "py-1.5 px-2 bg-[#4C5C2D]/50 hover:bg-[#718348]/60 border border-[#718348]/40 hover:border-[#718348] rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition";
                         this.playSparkleSound();
                     } else {
                         btnCandle.innerHTML = `<i data-lucide="flame" class="w-3.5 h-3.5 text-zinc-500"></i> Vela: Apagada`;
@@ -4942,7 +4809,7 @@
                     clearInterval(this.musicTimer);
                     this.musicTimer = null;
 
-                    btnMusic.classList.remove('animate-pulse', 'bg-amber-500/20', 'border-amber-400');
+                    btnMusic.classList.remove('animate-pulse', 'bg-[#718348]/20', 'border-[#718348]');
                     icon.setAttribute('data-lucide', 'music');
                     badge.classList.add('hidden');
                     lucide.createIcons();
@@ -4953,7 +4820,7 @@
                     this.melodyStep = 0;
                     this.musicNextNoteTime = ctx.currentTime + 0.05;
 
-                    btnMusic.classList.add('animate-pulse', 'bg-amber-500/20', 'border-amber-400');
+                    btnMusic.classList.add('animate-pulse', 'bg-[#718348]/20', 'border-[#718348]');
                     icon.setAttribute('data-lucide', 'volume-2');
                     badge.classList.remove('hidden');
                     lucide.createIcons();
@@ -5150,6 +5017,7 @@
     </script>
   </body>
 </html>
+
 
 
 
