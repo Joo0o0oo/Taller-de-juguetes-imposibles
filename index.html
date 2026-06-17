@@ -502,6 +502,9 @@
 
                     const ray = this.createXRControllerRay(i);
                     controller.add(ray);
+
+                    const hand = this.createHandMesh(i);
+                    controller.add(hand);
                     controller.visible = true;
                     this.xrControllers.push(controller);
                     this.xrControllerRays.push(ray);
@@ -509,6 +512,36 @@
                 }
             }
 
+            createHandMesh(index) {
+                const handGroup = new THREE.Group();
+                handGroup.name = 'hand_visual';
+
+                const skinColor = index === 0 ? 0xf5c5a3 : 0xe8b090;
+                const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.8 });
+
+                const palm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.10), skinMat);
+                palm.position.set(0, 0, -0.05);
+                handGroup.add(palm);
+
+                const fingerGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.055, 6);
+                const fingerOffsets = [-0.028, -0.009, 0.009, 0.028];
+                fingerOffsets.forEach(xOff => {
+                    const finger = new THREE.Mesh(fingerGeo, skinMat);
+                    finger.position.set(xOff, 0, -0.095);
+                    finger.rotation.x = Math.PI / 2;
+                    handGroup.add(finger);
+                });
+
+                const thumbGeo = new THREE.CylinderGeometry(0.009, 0.009, 0.04, 6);
+                const thumb = new THREE.Mesh(thumbGeo, skinMat);
+                thumb.position.set(index === 0 ? 0.046 : -0.046, 0, -0.04);
+                thumb.rotation.z = index === 0 ? -Math.PI / 4 : Math.PI / 4;
+                handGroup.add(thumb);
+
+                handGroup.rotation.x = -Math.PI / 6;
+
+                return handGroup;
+            }
             createXRControllerRay(index = 0) {
                 const geometry = new THREE.BufferGeometry().setFromPoints([
                     new THREE.Vector3(0, 0, 0),
@@ -1142,7 +1175,7 @@
 
                     const box = new THREE.Box3().setFromObject(desk);
                     const size = box.getSize(new THREE.Vector3());
-                    const scaleFactor = 0.9 / size.y;
+                    const scaleFactor = 0.72 / size.y;
                     desk.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
                     const updatedBox = new THREE.Box3().setFromObject(desk);
@@ -1174,16 +1207,16 @@
                 const woodMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.7 });
                 const legMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.5 });
 
-                const top = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.06, 1.1), woodMat);
-                top.position.set(0, 0.87, -0.5); 
+                const top = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.06, 0.85), woodMat);
+                top.position.set(0, 0.78, -0.5); 
                 top.castShadow = true;
                 top.receiveShadow = true;
                 fallbackDesk.add(top);
 
                 const legGeo = new THREE.BoxGeometry(0.06, 0.84, 0.06);
                 const positions = [
-                    [-1.0, 0.42, -0.45 - 0.5], [1.0, 0.42, -0.45 - 0.5],
-                    [-1.0, 0.42, 0.45 - 0.5], [1.0, 0.42, 0.45 - 0.5]
+                    [-0.8, 0.38, -0.36 - 0.5], [0.8, 0.38, -0.36 - 0.5],
+                    [-0.8, 0.38, 0.36 - 0.5], [0.8, 0.38, 0.36 - 0.5]
                 ];
                 positions.forEach(pos => {
                     const leg = new THREE.Mesh(legGeo, legMat);
@@ -1193,7 +1226,7 @@
                 });
 
                 fallbackDesk.rotation.y = Math.PI;
-                this.workshopTableSurface = { minX: -1.1, maxX: 1.1, minZ: -1.05, maxZ: 0.05, topY: 0.90 };
+                this.workshopTableSurface = { minX: -0.85, maxX: 0.85, minZ: -0.93, maxZ: 0.03, topY: 0.81 };
                 this.registerWorkshopTableSurface();
                 this.tallerGroup.add(fallbackDesk);
             }
@@ -1252,8 +1285,8 @@
 
                 // --- ESTANTE DE PARED RÚSTICO ---
                 const shelfGroup = new THREE.Group();
-                const shelfMesh = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.04, 0.28), new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.85 }));
-                shelfMesh.position.set(0, 1.38, -1.12); 
+                const shelfMesh = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.04, 0.22), new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.85 }));
+                shelfMesh.position.set(0, 1.35, -1.12); 
                 shelfMesh.castShadow = true;
                 shelfMesh.receiveShadow = true;
                 shelfGroup.add(shelfMesh);
@@ -1271,15 +1304,15 @@
                 this.tallerGroup.add(shelfGroup);
                 this.workshopShelfSurfaces = this.workshopShelfSurfaces || [];
                 this.workshopShelfSurfaces.push({ minX: -0.9, maxX: 0.9, minZ: -1.26, maxZ: -0.98, topY: 1.40 });
-                this.registerStaticSurface(-0.9, 0.9, -1.26, -0.98, 1.40);
+                this.registerStaticSurface(-0.675, 0.675, -1.23, -1.01, 1.37);
 
                 // --- REPISA BAJA PARA JUGUETES ---
                 const lowerShelfGroup = new THREE.Group();
                 const lowerShelf = new THREE.Mesh(
-                    new THREE.BoxGeometry(1.35, 0.045, 0.24),
+                    new THREE.BoxGeometry(1.05, 0.045, 0.20),
                     new THREE.MeshStandardMaterial({ color: 0x4a2a18, roughness: 0.85 })
                 );
-                lowerShelf.position.set(-0.92, 1.05, -1.02);
+                lowerShelf.position.set(-0.82, 1.05, -1.02);
                 lowerShelf.castShadow = true;
                 lowerShelf.receiveShadow = true;
                 lowerShelfGroup.add(lowerShelf);
@@ -1296,13 +1329,13 @@
 
                 this.tallerGroup.add(lowerShelfGroup);
                 this.workshopShelfSurfaces = this.workshopShelfSurfaces || [];
-                this.workshopShelfSurfaces.push({ minX: -1.595, maxX: -0.245, minZ: -1.14, maxZ: -0.90, topY: 1.0725 });
-                this.registerStaticSurface(-1.595, -0.245, -1.14, -0.90, 1.0725);
+                this.workshopShelfSurfaces.push({ minX: -1.22, maxX: -0.22, minZ: -1.12, maxZ: -0.92, topY: 1.0725 });
+                this.registerStaticSurface(-1.22, -0.22, -1.12, -0.92, 1.0725);
 
                 // --- SOPORTE LATERAL / CAJÓN DE EXHIBICIÓN ---
                 const sideDisplay = new THREE.Group();
                 const displayTop = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.7, 0.05, 0.55),
+                    new THREE.BoxGeometry(0.55, 0.05, 0.42),
                     new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.85 })
                 );
                 displayTop.position.set(1.18, 0.64, -0.98);
@@ -1312,7 +1345,7 @@
                 sideDisplay.add(displayTop);
 
                 const displayBase = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.62, 0.48, 0.48),
+                    new THREE.BoxGeometry(0.50, 0.40, 0.38),
                     new THREE.MeshStandardMaterial({ color: 0x332015, roughness: 0.9 })
                 );
                 displayBase.position.set(1.18, 0.36, -0.98);
@@ -1323,8 +1356,8 @@
 
                 this.tallerGroup.add(sideDisplay);
                 this.workshopShelfSurfaces = this.workshopShelfSurfaces || [];
-                this.workshopShelfSurfaces.push({ minX: 0.83, maxX: 1.53, minZ: -1.255, maxZ: -0.705, topY: 0.665 });
-                this.registerStaticSurface(0.83, 1.53, -1.255, -0.705, 0.665);
+                this.workshopShelfSurfaces.push({ minX: 0.90, maxX: 1.46, minZ: -1.20, maxZ: -0.76, topY: 0.665 });
+                this.registerStaticSurface(0.90, 1.46, -1.20, -0.76, 0.665);
             }
 
             createDustMotes() {
@@ -5117,6 +5150,9 @@
     </script>
   </body>
 </html>
+
+
+
 
 
 
