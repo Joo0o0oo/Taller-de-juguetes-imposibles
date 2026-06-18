@@ -167,6 +167,12 @@
             <i data-lucide="anchor" class="w-16 h-16 text-[#718348] mx-auto mb-4 animate-[bounce_2s_infinite]"></i>
             <h2 class="text-3xl font-bold text-[#FFF4F5] font-['Croissant_One'] tracking-widest uppercase" id="transition-title">¡Iniciando viaje!</h2>
             <p id="transition-status" class="text-sm text-[#FFF4F5]/70 mt-2">Levantando anclas, encendiendo luces de cubierta...</p>
+            <div id="transition-onboarding" class="mt-5 mx-auto max-w-xl grid grid-cols-1 sm:grid-cols-2 gap-2 text-left text-xs text-[#FFF4F5]/75">
+                <div class="bg-[#464644]/45 border border-[#718348]/25 rounded-lg px-3 py-2">Grip: tomar y soltar objetos.</div>
+                <div class="bg-[#464644]/45 border border-[#718348]/25 rounded-lg px-3 py-2">Trigger: activar botones, palancas y carteles.</div>
+                <div class="bg-[#464644]/45 border border-[#718348]/25 rounded-lg px-3 py-2">Boton X izquierdo: menu de opciones.</div>
+                <div class="bg-[#464644]/45 border border-[#718348]/25 rounded-lg px-3 py-2">Dos grips en nubes: separar agranda, acercar achica.</div>
+            </div>
             <div class="mt-6 w-48 h-1 bg-[#4C5C2D]/70 rounded-full mx-auto overflow-hidden">
                 <div class="h-full bg-[#718348] animate-[pulse_1.5s_infinite] w-full"></div>
             </div>
@@ -202,7 +208,7 @@
             camionSinRueda: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1camion-sinrueda.glb",
             camionRueda: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1camion-rueda.glb",
             viajeEscena: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/main/barco-scene.glb",
-            planeScene: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1avion-scene.glb",
+            planeScene: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/main/1avion-scene.glb?v=20260618-reload-2",
             planeLarge: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1avion-grande.glb",
             cloud: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1nube.glb",
             pedestalPalanca: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1pedestal.glb",
@@ -304,6 +310,9 @@
                 this.xrMenuItems = [];
                 this.xrMenuOpen = false;
                 this.xrLastMenuToggleTime = 0;
+                this.xrLightLevel = 120;
+                this.xrLightValueMesh = null;
+                this.xrLeftHandHint = null;
                 this.heldObjectLeft = null;
                 this.heldObjectRight = null;
                 this.GRAB_DISTANCE = 0.22;
@@ -318,16 +327,22 @@
                 this.activeTravelToy = null;
                 this.activeSceneConfig = null;
                 this.pedestalCenter = new THREE.Vector3(0, 0.94, -0.5); // se actualiza en _setupPedestalOnTable
+                this.pedestalLight = null;
+                this.pedestalGlowMat = null;
+                this.pedestalIsActive = false;
                 this.skyClouds = [];
                 this.largePlaneModel = null;
                 this.skyFloorModel = null;
                 this.cloudMachine = null;
                 this.coinSlot = null;
                 this.slotLever = null;
+                this.skyCoinTray = null;
                 this.skyCoins = [];
                 this.skyMovableObjects = [];
                 this.selectedSkyObject = null;
                 this.dispensedClouds = [];
+                this.cloudGripControllers = { left: null, right: null };
+                this.cloudScaleGesture = null;
                 this.coinsCollected = 0;
                 this.boatInteractiveObjects = [];
                 this.boatMovableObjects = [];
@@ -504,6 +519,13 @@
                             ray.visible = true;
                             ray.material.color.setHex(controller.userData.handedness === 'left' ? 0x7dd3fc : 0xffd166);
                         }
+                        const hint = controller.children.find(child => child.name === 'cartel-mano-izquierda-menu-x');
+                        if (hint) hint.visible = controller.userData.handedness === 'left';
+                        if (!hint && controller.userData.handedness === 'left') {
+                            const newHint = this.createXRLeftHandHint();
+                            controller.add(newHint);
+                            this.xrLeftHandHint = newHint;
+                        }
                     });
                     controller.addEventListener('disconnected', () => {
                         controller.userData.inputSource = null;
@@ -511,12 +533,19 @@
                     });
                     controller.addEventListener('selectstart', () => this.onXRSelectStart(controller));
                     controller.addEventListener('selectend', () => this.onXRSelectEnd(controller));
+                    controller.addEventListener('squeezestart', () => this.onXRSqueezeStart(controller));
+                    controller.addEventListener('squeezeend', () => this.onXRSqueezeEnd(controller));
 
                     const ray = this.createXRControllerRay(i);
                     controller.add(ray);
 
                     const hand = this.createHandMesh(i);
                     controller.add(hand);
+                    if (i === 0) {
+                        const hint = this.createXRLeftHandHint();
+                        controller.add(hint);
+                        this.xrLeftHandHint = hint;
+                    }
                     controller.visible = true;
                     this.xrControllers.push(controller);
                     this.xrControllerRays.push(ray);
@@ -578,6 +607,29 @@
                 return line;
             }
 
+            createXRLeftHandHint() {
+                const hint = new THREE.Group();
+                hint.name = 'cartel-mano-izquierda-menu-x';
+                hint.position.set(-0.06, 0.18, -0.16);
+                hint.rotation.set(-0.45, 0.18, 0.05);
+
+                const panel = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.42, 0.18),
+                    new THREE.MeshBasicMaterial({
+                        map: this.createXRTextTexture('X\nMenu', 320, 180, {
+                            size: 40,
+                            background: 'rgba(19, 9, 4, 0.82)',
+                            border: 'rgba(125, 211, 252, 0.85)',
+                            color: '#dff6ff'
+                        }),
+                        transparent: true,
+                        side: THREE.DoubleSide
+                    })
+                );
+                hint.add(panel);
+                return hint;
+            }
+
             createXRTextTexture(text, width = 512, height = 128, options = {}) {
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
@@ -592,7 +644,12 @@
                 ctx.font = `${options.weight || 700} ${options.size || 34}px Inter, Arial, sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(text, width / 2, height / 2);
+                const lines = String(text).split('\n');
+                const lineHeight = options.lineHeight || (options.size || 34) * 1.18;
+                const startY = height / 2 - ((lines.length - 1) * lineHeight) / 2;
+                lines.forEach((line, index) => {
+                    ctx.fillText(line, width / 2, startY + index * lineHeight);
+                });
                 const texture = new THREE.CanvasTexture(canvas);
                 texture.colorSpace = THREE.SRGBColorSpace;
                 texture.needsUpdate = true;
@@ -607,7 +664,7 @@
                 menu.visible = false;
 
                 const back = new THREE.Mesh(
-                    new THREE.PlaneGeometry(1.18, 1.28),
+                    new THREE.PlaneGeometry(1.22, 1.34),
                     new THREE.MeshBasicMaterial({ color: 0x130904, transparent: true, opacity: 0.88, side: THREE.DoubleSide })
                 );
                 back.position.z = -0.015;
@@ -621,8 +678,43 @@
                 menu.add(title);
 
                 this.xrMenuItems = [];
+                const lightLabel = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.82, 0.13),
+                    new THREE.MeshBasicMaterial({
+                        map: this.createXRTextTexture('Calibrar luz ambiente', 512, 96, { size: 28, background: 'rgba(24, 12, 4, 0.72)', border: 'rgba(245, 158, 11, 0.35)' }),
+                        transparent: true,
+                        side: THREE.DoubleSide
+                    })
+                );
+                lightLabel.position.set(0, 0.30, 0.002);
+                menu.add(lightLabel);
+
+                const lightMinus = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.22, 0.17),
+                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('-', 256, 128, { size: 58 }), transparent: true, side: THREE.DoubleSide })
+                );
+                lightMinus.position.set(-0.38, 0.12, 0.002);
+                lightMinus.userData.xrMenuAction = 'light-down';
+                menu.add(lightMinus);
+                this.xrMenuItems.push(lightMinus);
+
+                this.xrLightValueMesh = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.38, 0.17),
+                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture(`${this.xrLightLevel}%`, 256, 128, { size: 38, background: 'rgba(69, 26, 3, 0.95)' }), transparent: true, side: THREE.DoubleSide })
+                );
+                this.xrLightValueMesh.position.set(0, 0.12, 0.002);
+                menu.add(this.xrLightValueMesh);
+
+                const lightPlus = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.22, 0.17),
+                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('+', 256, 128, { size: 52 }), transparent: true, side: THREE.DoubleSide })
+                );
+                lightPlus.position.set(0.38, 0.12, 0.002);
+                lightPlus.userData.xrMenuAction = 'light-up';
+                menu.add(lightPlus);
+                this.xrMenuItems.push(lightPlus);
+
                 const items = [
-                    { label: 'Iluminacion', action: 'light' },
                     { label: 'Musica', action: 'music' },
                     { label: 'Volver al inicio', action: 'home' },
                     { label: 'Cerrar menu', action: 'close' },
@@ -634,7 +726,7 @@
                         new THREE.PlaneGeometry(0.96, 0.18),
                         new THREE.MeshBasicMaterial({ map: this.createXRTextTexture(item.label, 512, 128, { size: 32 }), transparent: true, side: THREE.DoubleSide })
                     );
-                    button.position.y = 0.30 - index * 0.22;
+                    button.position.y = -0.10 - index * 0.22;
                     button.userData.xrMenuAction = item.action;
                     menu.add(button);
                     this.xrMenuItems.push(button);
@@ -649,6 +741,7 @@
                 this.xrMenuOpen = visible;
                 this.xrMenu.visible = visible;
                 if (visible) {
+                    this.syncXRLightLevelFromSlider();
                     this.positionXRMenuInFrontOfCamera();
                     this.playSparkleSound();
                 }
@@ -686,8 +779,10 @@
             }
 
             runXRMenuAction(action) {
-                if (action === 'light') {
-                    this.cycleXRLighting();
+                if (action === 'light-down') {
+                    this.adjustXRLighting(-15);
+                } else if (action === 'light-up') {
+                    this.adjustXRLighting(15);
                 } else if (action === 'music') {
                     this.toggleMusicBoxLoop();
                     this.playClinkSound();
@@ -711,115 +806,212 @@
                 }
             }
 
-            cycleXRLighting() {
+            syncXRLightLevelFromSlider() {
+                const sliderLamp = document.getElementById('slider-lamp');
+                this.xrLightLevel = THREE.MathUtils.clamp(Number(sliderLamp?.value || this.xrLightLevel || 120), 0, 200);
+                this.updateXRLightingReadout();
+            }
+
+            adjustXRLighting(delta) {
+                this.xrLightLevel = THREE.MathUtils.clamp((this.xrLightLevel || 120) + delta, 0, 200);
+                this.applyXRLightingLevel(this.xrLightLevel);
+                this.updateXRLightingReadout();
+                this.playSparkleSound();
+            }
+
+            applyXRLightingLevel(level) {
                 const sliderLamp = document.getElementById('slider-lamp');
                 const sliderWarmth = document.getElementById('slider-warmth');
-                const current = Number(sliderLamp?.value || 120);
-                const next = current < 80 ? 120 : current < 160 ? 200 : 45;
                 if (sliderLamp) {
-                    sliderLamp.value = next;
+                    sliderLamp.value = level;
                     sliderLamp.dispatchEvent(new Event('input', { bubbles: true }));
                 }
                 if (sliderWarmth) {
-                    sliderWarmth.value = next >= 160 ? 95 : 65;
+                    sliderWarmth.value = level >= 150 ? 95 : level >= 75 ? 70 : 45;
                     sliderWarmth.dispatchEvent(new Event('input', { bubbles: true }));
                 }
                 if (this.candleLight) {
-                    this.candleLight.visible = next !== 45;
+                    this.candleLight.visible = level > 25;
                     if (this.candleFlame) this.candleFlame.visible = this.candleLight.visible;
                 }
-                this.playSparkleSound();
+                const factor = THREE.MathUtils.clamp(level / 120, 0.25, 1.85);
+                if (this.currentSceneState === 'viaje') {
+                    if (this.activeSceneConfig?.skyColor) {
+                        this.viajeLightAmbient.intensity = 1.35 * factor;
+                        this.viajeLightSun.intensity = 2.4 * factor;
+                    } else {
+                        this.viajeLightAmbient.intensity = 0.5 * factor;
+                        this.viajeLightSun.intensity = 0.9 * factor;
+                        this.boatCabinLight.intensity = 2.5 * factor;
+                    }
+                } else if (this.ambientLight) {
+                    this.ambientLight.intensity = 0.45 + factor * 0.35;
+                }
+            }
+
+            updateXRLightingReadout() {
+                if (!this.xrLightValueMesh?.material) return;
+                const oldMap = this.xrLightValueMesh.material.map;
+                this.xrLightValueMesh.material.map = this.createXRTextTexture(`${Math.round(this.xrLightLevel)}%`, 256, 128, {
+                    size: 38,
+                    background: 'rgba(69, 26, 3, 0.95)'
+                });
+                this.xrLightValueMesh.material.needsUpdate = true;
+                if (oldMap) oldMap.dispose();
             }
 
             onXRSelectStart(controller) {
                 this.currentInputSource = 'xr';
                 this.activeXRController = controller;
                 this.setRaycasterFromXRController(controller);
-                const handedness = controller.userData.handedness;
-                const held = handedness === 'left' ? this.heldObjectLeft : this.heldObjectRight;
-
-                if (held) {
-                    this.releaseXRHeldObject(controller, held);
-                    this.activeXRController = null;
-                    return;
-                }
 
                 if (this.handleXRMenuSelection(controller)) return;
 
-                // --- GRAB POR PROXIMIDAD (solo en escena taller) ---
-                if (this.currentSceneState === 'taller' && this.objects.length > 0) {
-                    const handPos = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
-                    let closest = null;
-                    let closestDist = this.GRAB_DISTANCE;
-
-                    for (const obj of this.objects) {
-                        const objPos = new THREE.Vector3();
-                        obj.getWorldPosition(objPos);
-                        const dist = handPos.distanceTo(objPos);
-                        if (dist < closestDist) {
-                            closestDist = dist;
-                            closest = obj;
-                        }
-                    }
-
-                    if (closest) {
-                        if (closest === this.heldObjectLeft || closest === this.heldObjectRight) return;
-                        this.grabXRObject(controller, closest, 'taller');
-                        return;
-                    }
-                }
-
                 if (this.currentSceneState === 'viaje') {
-                    if (this.activeTravelToy === 'plane' && this.handleSkySceneClick()) {
-                        if (this.selectedSkyObject) {
-                            const picked = this.selectedSkyObject;
-                            this.selectedSkyObject = null;
-                            this.grabXRObject(controller, picked, 'sky');
-                        }
-                        return;
-                    }
-                    if (this.activeTravelToy === 'boat' && this.handleBoatScenePointerDown()) {
-                        if (this.selectedBoatObject) {
-                            const picked = this.selectedBoatObject;
-                            this.selectedBoatObject = null;
-                            this.grabXRObject(controller, picked, 'boat');
-                        }
-                        return;
-                    }
-                    if (this.activeTravelToy === 'train' && this.handleTrainScenePointerDown()) {
-                        if (this.selectedTrainObject) {
-                            const picked = this.selectedTrainObject;
-                            this.selectedTrainObject = null;
-                            this.grabXRObject(controller, picked, 'train');
-                        }
-                        return;
-                    }
+                    if (this.activeTravelToy === 'plane' && this.handleSkySceneClick({ allowObjectGrab: false })) return;
+                    if (this.activeTravelToy === 'boat' && this.handleBoatScenePointerDown({ allowObjectGrab: false })) return;
+                    if (this.activeTravelToy === 'train' && this.handleTrainScenePointerDown({ allowObjectGrab: false })) return;
 
                     if (this.leverModel) {
                         const intersectsExit = this.raycaster.intersectObject(this.leverModel, true);
                         if (intersectsExit.length > 0) {
                             this.playLeverClickSound();
+                            this.flashExitSign();
                             this.returnToTaller();
                             return;
                         }
                     }
                     return;
                 }
-
-                const intersects = this.raycaster.intersectObjects(this.objects, true);
-                if (intersects.length === 0) return;
-
-                let target = intersects[0].object;
-                while (target.parent && !this.objects.includes(target)) {
-                    target = target.parent;
-                }
-
-                if (!this.objects.includes(target)) return;
-                this.grabXRObject(controller, target, 'taller');
             }
 
             onXRSelectEnd(controller) {
                 if (this.activeXRController === controller) this.activeXRController = null;
+            }
+
+            onXRSqueezeStart(controller) {
+                this.currentInputSource = 'xr';
+                this.activeXRController = controller;
+                this.setRaycasterFromXRController(controller);
+
+                const handedness = controller.userData.handedness;
+                const held = handedness === 'left' ? this.heldObjectLeft : this.heldObjectRight;
+                if (held) {
+                    this.releaseXRHeldObject(controller, held);
+                    this.activeXRController = null;
+                    return;
+                }
+
+                if (this.currentSceneState === 'taller') {
+                    this.tryGrabXRObjectFromCollection(controller, this.objects, 'taller');
+                    return;
+                }
+
+                if (this.currentSceneState === 'viaje') {
+                    if (this.activeTravelToy === 'plane') {
+                        if (this.handleCloudGripStart(controller)) return;
+                        this.tryGrabXRObjectFromCollection(controller, this.skyMovableObjects || [], 'sky');
+                    } else if (this.activeTravelToy === 'boat') {
+                        this.tryGrabXRObjectFromCollection(controller, this.boatMovableObjects || [], 'boat');
+                    } else if (this.activeTravelToy === 'train') {
+                        this.tryGrabXRObjectFromCollection(controller, this.trainMovableObjects || [], 'train');
+                    }
+                }
+            }
+
+            onXRSqueezeEnd(controller) {
+                this.handleCloudGripEnd(controller);
+                if (this.activeXRController === controller) this.activeXRController = null;
+            }
+
+            handleCloudGripStart(controller) {
+                if (!controller || this.activeTravelToy !== 'plane' || !this.dispensedClouds?.length) return false;
+                const hits = this.raycaster.intersectObjects(this.dispensedClouds, true);
+                if (hits.length === 0) return false;
+
+                const cloud = this.findInteractiveParent(hits[0].object, this.dispensedClouds);
+                if (!cloud || cloud.userData.isPreview) return false;
+
+                const handedness = controller.userData.handedness || 'right';
+                this.cloudGripControllers[handedness] = { controller, cloud };
+
+                const otherHand = handedness === 'left' ? 'right' : 'left';
+                const other = this.cloudGripControllers[otherHand];
+                if (other?.cloud === cloud) {
+                    const p1 = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
+                    const p2 = new THREE.Vector3().setFromMatrixPosition(other.controller.matrixWorld);
+                    this.cloudScaleGesture = {
+                        cloud,
+                        left: handedness === 'left' ? controller : other.controller,
+                        right: handedness === 'right' ? controller : other.controller,
+                        startDistance: Math.max(0.05, p1.distanceTo(p2)),
+                        startScale: cloud.userData.targetScale || cloud.scale.x || 0.35
+                    };
+                } else {
+                    this.cycleDispensedCloudSize(cloud);
+                }
+
+                this.playSparkleSound();
+                return true;
+            }
+
+            handleCloudGripEnd(controller) {
+                if (!controller || !this.cloudGripControllers) return;
+                const handedness = controller.userData.handedness || 'right';
+                const active = this.cloudGripControllers[handedness];
+                this.cloudGripControllers[handedness] = null;
+                if (this.cloudScaleGesture && active?.cloud === this.cloudScaleGesture.cloud) {
+                    this.cloudScaleGesture = null;
+                }
+            }
+
+            cycleDispensedCloudSize(cloud) {
+                if (!cloud || cloud.userData.isPreview) return;
+                const sizes = [0.35, 0.75, 1.15];
+                const current = cloud.userData.sizeStep ?? 0;
+                const next = (current + 1) % sizes.length;
+                cloud.userData.sizeStep = next;
+                cloud.userData.targetScale = sizes[next];
+            }
+
+            updateCloudScaleGesture() {
+                const gesture = this.cloudScaleGesture;
+                if (!gesture?.cloud?.parent || !gesture.left || !gesture.right) return;
+                const p1 = new THREE.Vector3().setFromMatrixPosition(gesture.left.matrixWorld);
+                const p2 = new THREE.Vector3().setFromMatrixPosition(gesture.right.matrixWorld);
+                const distance = Math.max(0.05, p1.distanceTo(p2));
+                const target = THREE.MathUtils.clamp(gesture.startScale * (distance / gesture.startDistance), 0.28, 1.35);
+                gesture.cloud.userData.targetScale = target;
+                gesture.cloud.userData.sizeStep = target < 0.55 ? 0 : target < 0.95 ? 1 : 2;
+            }
+
+            tryGrabXRObjectFromCollection(controller, collection, sceneType) {
+                if (!collection || collection.length === 0) return false;
+                const handPos = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
+                let target = null;
+                let closestDist = this.GRAB_DISTANCE * 1.35;
+
+                for (const obj of collection) {
+                    if (!obj || !obj.parent || obj.userData.type === 'dispensedCloud') continue;
+                    if (obj === this.heldObjectLeft || obj === this.heldObjectRight) continue;
+                    const objPos = new THREE.Vector3();
+                    obj.getWorldPosition(objPos);
+                    const dist = handPos.distanceTo(objPos);
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        target = obj;
+                    }
+                }
+
+                if (!target) {
+                    const hits = this.raycaster.intersectObjects(collection, true);
+                    if (hits.length > 0) {
+                        target = this.findInteractiveParent(hits[0].object, collection);
+                    }
+                }
+
+                if (!target || target.userData.type === 'dispensedCloud') return false;
+                return this.grabXRObject(controller, target, sceneType);
             }
 
             isQuestXButtonPressed(source) {
@@ -1150,7 +1342,9 @@
                 this.pedestalWoodMat = new THREE.MeshStandardMaterial({
                     color: 0x4a2a18,
                     roughness: 0.7,
-                    metalness: 0.1
+                    metalness: 0.1,
+                    emissive: new THREE.Color(0x160906),
+                    emissiveIntensity: 0.18
                 });
                 const woodBlock = new THREE.Mesh(woodGeo, this.pedestalWoodMat);
                 woodBlock.castShadow = true;
@@ -1161,8 +1355,24 @@
                     color: 0xd4af37,
                     metalness: 0.9,
                     roughness: 0.15,
-                    emissive: new THREE.Color(0x000000)
+                    emissive: new THREE.Color(0x5a3500),
+                    emissiveIntensity: 0.28
                 });
+
+                this.pedestalGlowMat = new THREE.MeshBasicMaterial({
+                    color: 0xffc95a,
+                    transparent: true,
+                    opacity: 0.18,
+                    depthWrite: false
+                });
+                const glowPlate = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.004, 0.16), this.pedestalGlowMat);
+                glowPlate.name = 'pedestal-glow-plate';
+                glowPlate.position.y = 0.024;
+                this.pedestalGroup.add(glowPlate);
+
+                this.pedestalLight = new THREE.PointLight(0xffc65a, 0.35, 0.9);
+                this.pedestalLight.position.set(0, 0.12, 0);
+                this.pedestalGroup.add(this.pedestalLight);
 
                 const thickness = 0.008;
                 const wallLength = 0.2;
@@ -1515,7 +1725,7 @@
 
                 this.tallerGroup.add(newToy);
                 this.objects.push(newToy);
-                this.registerPhysicsObject(newToy, tableTopY);
+                this.registerPhysicsObject(newToy, 0.0);
 
                 if (newToy.userData.isFlying) {
                     this.playSparkleSound();
@@ -1562,7 +1772,7 @@
                 crateGroup.scale.set(scale, scale, scale);
                 this.tallerGroup.add(crateGroup);
                 this.objects.push(crateGroup);
-                this.registerPhysicsObject(crateGroup, this.workshopTableSurface?.topY ?? 0.88);
+                this.registerPhysicsObject(crateGroup, 0.0);
 
                 return crateGroup;
             }
@@ -1752,6 +1962,18 @@
                                 break;
                             }
                         }
+
+                        if (!landed) {
+                            const dynamicSurface = this.findDynamicSupportSurface(box2, obj);
+                            if (dynamicSurface && obj.velocity.y <= 0.05) {
+                                obj.mesh.position.y += dynamicSurface.topY - box2.min.y;
+                                obj.velocity.y = 0;
+                                obj.velocity.x = 0;
+                                obj.velocity.z = 0;
+                                obj.onGround = true;
+                                landed = true;
+                            }
+                        }
                     }
 
                     if (landed &&
@@ -1847,7 +2069,42 @@
                         Math.abs(box.min.y - surf.topY) < 0.05;
                     if (onSurface) return true;
                 }
+                if (this.findDynamicSupportSurface(box, obj, 0.06)) return true;
                 return false;
+            }
+
+            findDynamicSupportSurface(box, obj, tolerance = 0.12) {
+                for (const other of (this.physicsObjects || [])) {
+                    if (!other || other === obj || !other.mesh?.parent) continue;
+                    if (
+                        other.mesh === this.selectedObject ||
+                        other.mesh === this.selectedBoatObject ||
+                        other.mesh === this.selectedTrainObject ||
+                        other.mesh === this.selectedTruckObject ||
+                        other.mesh === this.selectedSkyObject ||
+                        other.mesh === this.heldObjectLeft ||
+                        other.mesh === this.heldObjectRight ||
+                        other.mesh.userData.isFlying ||
+                        other.mesh.userData.installed
+                    ) {
+                        continue;
+                    }
+
+                    const supportStable = other.resting || other.onGround || Math.abs(other.velocity?.y || 0) < 0.02;
+                    if (!supportStable) continue;
+
+                    const otherBox = new THREE.Box3().setFromObject(other.mesh);
+                    const overlapX = Math.min(box.max.x, otherBox.max.x) - Math.max(box.min.x, otherBox.min.x);
+                    const overlapZ = Math.min(box.max.z, otherBox.max.z) - Math.max(box.min.z, otherBox.min.z);
+                    if (overlapX < 0.025 || overlapZ < 0.025) continue;
+
+                    const nearTop = box.min.y <= otherBox.max.y + tolerance && box.min.y >= otherBox.max.y - tolerance;
+                    const aboveCenter = box.getCenter(new THREE.Vector3()).y >= otherBox.getCenter(new THREE.Vector3()).y;
+                    if (nearTop && aboveCenter) {
+                        return { topY: otherBox.max.y, support: other.mesh };
+                    }
+                }
+                return null;
             }
             registerPhysicsObject(mesh, floorY = 0.0) {
                 if (!mesh || this.physicsObjects.some(obj => obj.mesh === mesh)) return;
@@ -2012,6 +2269,7 @@
                         const intersectsExit = this.raycaster.intersectObject(this.leverModel, true);
                         if (intersectsExit.length > 0) {
                             this.playLeverClickSound();
+                            this.flashExitSign();
                             this.returnToTaller();
                             return;
                         }
@@ -2098,7 +2356,7 @@
                 this.currentInputSource = 'pointer';
             }
 
-            handleBoatScenePointerDown() {
+            handleBoatScenePointerDown({ allowObjectGrab = true } = {}) {
                 if (this.boatWheelInstalled && this.boatWheel) {
                     const wheelHit = this.raycaster.intersectObject(this.boatWheel, true);
                     if (wheelHit.length > 0) {
@@ -2125,7 +2383,7 @@
                     this.playSparkleSound();
                     return true;
                 }
-                if (!this.boatMovableObjects.length) return false;
+                if (!allowObjectGrab || !this.boatMovableObjects.length) return false;
                 const intersects = this.raycaster.intersectObjects(this.boatMovableObjects, true);
                 if (intersects.length === 0) return false;
 
@@ -2182,78 +2440,82 @@
                     }
                 }
 
-                if (obj?.userData.type === 'boatItem' || obj?.userData.type === 'boatCandle') {
-                    const pos = obj.position;
-                    const overboard = Math.abs(pos.x) > 0.85 || pos.z > 0.95;
-                    if (overboard) {
-                        const sideSign = Math.sign(pos.x) || 1;
-                        let phys = this.physicsObjects.find(p => p.mesh === obj);
-                        if (!phys) {
-                            this.registerPhysicsObject(obj, 0.0);
-                            phys = this.physicsObjects.find(p => p.mesh === obj);
-                        }
-                        if (phys) {
-                            phys.velocity.set(sideSign * 1.8, 0.4, 0);
-                            phys.resting = false;
-                        }
-                        obj.userData.overboard = true;
-
-                        if (obj.userData.type === 'boatCandle' && obj.userData.spawnPos) {
-                            const sp = obj.userData.spawnPos;
-                            setTimeout(() => {
-                                if (!obj.parent || !obj.userData.overboard) return;
-                                this.unregisterPhysicsObject(obj);
-                                const fallOut = setInterval(() => {
-                                    if (!obj.parent) {
-                                        clearInterval(fallOut);
-                                        return;
-                                    }
-                                    obj.position.y -= 0.04;
-                                    obj.rotation.x += 0.05;
-                                    if (obj.position.y < -1.0) {
-                                        clearInterval(fallOut);
-                                        obj.position.set(sp[0], sp[1], sp[2]);
-                                        obj.rotation.set(0, 0, 0);
-                                        obj.userData.overboard = false;
-                                        this.registerPhysicsObject(obj, 0.0);
-                                        const resetPhys = this.physicsObjects.find(p => p.mesh === obj);
-                                        if (resetPhys) {
-                                            resetPhys.velocity.set(0, 0, 0);
-                                            resetPhys.resting = false;
-                                        }
-                                    }
-                                }, 16);
-                            }, 600);
-                            this.selectedBoatObject = null;
-                            return;
-                        }
-
-                        setTimeout(() => {
-                            if (!obj.parent || !obj.userData.overboard) return;
-                            this.unregisterPhysicsObject(obj);
-                            const fall = setInterval(() => {
-                                if (!obj.parent) {
-                                    clearInterval(fall);
-                                    return;
-                                }
-                                obj.position.y -= 0.04;
-                                obj.rotation.x += 0.05;
-                                if (obj.position.y < -1.5) {
-                                    this.boatSceneRoot?.remove(obj);
-                                    this.boatInteractiveObjects = this.boatInteractiveObjects.filter(o => o !== obj);
-                                    this.boatMovableObjects = this.boatMovableObjects.filter(o => o !== obj);
-                                    clearInterval(fall);
-                                }
-                            }, 16);
-                        }, 600);
-                        this.selectedBoatObject = null;
-                        return;
-                    }
+                if ((obj?.userData.type === 'boatItem' || obj?.userData.type === 'boatCandle') && this.isBoatOverboardThrowZone(obj.position)) {
+                    this.throwBoatObjectOverboard(obj);
+                    this.selectedBoatObject = null;
+                    return;
                 }
 
                 this.playClinkSound();
                 this.applyPhysicsReleaseImpulse(obj);
                 this.selectedBoatObject = null;
+            }
+
+            isBoatOverboardThrowZone(pos) {
+                const nearSideWall = Math.abs(pos.x) >= 0.78;
+                if (!nearSideWall) return false;
+
+                const zMax = 1.65;
+                const zMin = -2.25;
+                const yMax = 1.18;
+                const yMin = 0.02;
+                const cellZ = 0.30;
+                const cellY = 0.20;
+
+                if (pos.z < zMin || pos.z > zMax || pos.y < yMin || pos.y > yMax) return false;
+
+                const columnFromYellow = Math.floor((zMax - pos.z) / cellZ) + 1;
+                const blockFromTop = Math.floor((yMax - pos.y) / cellY) + 1;
+                const allowedColumns = [4, 6, 7];
+                return allowedColumns.includes(columnFromYellow) && blockFromTop >= 1 && blockFromTop <= 3;
+            }
+
+            throwBoatObjectOverboard(obj) {
+                if (!obj || !obj.parent) return;
+
+                this.unregisterPhysicsObject(obj);
+                obj.userData.overboard = true;
+
+                const start = obj.position.clone();
+                const sideSign = Math.sign(start.x) || 1;
+                const end = new THREE.Vector3(sideSign * 1.9, -0.75, start.z + 0.18);
+                const peak = Math.max(start.y + 0.75, 1.25);
+                const duration = 720;
+                const startTime = performance.now();
+
+                const animateThrow = () => {
+                    if (!obj.parent) return;
+                    const t = Math.min((performance.now() - startTime) / duration, 1);
+                    obj.position.lerpVectors(start, end, t);
+                    obj.position.y = THREE.MathUtils.lerp(start.y, end.y, t) + Math.sin(t * Math.PI) * (peak - Math.max(start.y, end.y));
+                    obj.rotation.x += 0.08;
+                    obj.rotation.z += sideSign * 0.05;
+
+                    if (t < 1) {
+                        requestAnimationFrame(animateThrow);
+                        return;
+                    }
+
+                    if (obj.userData.type === 'boatCandle' && obj.userData.spawnPos) {
+                        const sp = obj.userData.spawnPos;
+                        obj.position.set(sp[0], sp[1], sp[2]);
+                        obj.rotation.set(0, 0, 0);
+                        obj.userData.overboard = false;
+                        this.registerPhysicsObject(obj, 0.0);
+                        const resetPhys = this.physicsObjects.find(p => p.mesh === obj);
+                        if (resetPhys) {
+                            resetPhys.velocity.set(0, 0, 0);
+                            resetPhys.resting = false;
+                        }
+                    } else {
+                        this.boatSceneRoot?.remove(obj);
+                        this.boatInteractiveObjects = this.boatInteractiveObjects.filter(o => o !== obj);
+                        this.boatMovableObjects = this.boatMovableObjects.filter(o => o !== obj);
+                    }
+                };
+
+                animateThrow();
+                this.playWobbleSound();
             }
             getToyOnPedestal() {
                 return this.objects.find(obj => {
@@ -2264,14 +2526,38 @@
             }
 
             setPedestalState(activeToy) {
+                if (!this.pedestalWoodMat || !this.pedestalMetalMat) return;
+                this.pedestalIsActive = Boolean(activeToy);
                 if (activeToy) {
                     this.pedestalWoodMat.color.setHex(0x1b5e20);
-                    this.pedestalMetalMat.color.setHex(0x4caf50);
-                    this.pedestalMetalMat.emissive.setHex(0x0e3a0e);
+                    this.pedestalWoodMat.emissive.setHex(0x06260e);
+                    this.pedestalWoodMat.emissiveIntensity = 0.32;
+                    this.pedestalMetalMat.color.setHex(0x80d777);
+                    this.pedestalMetalMat.emissive.setHex(0x2f7f3a);
+                    this.pedestalMetalMat.emissiveIntensity = 0.65;
+                    if (this.pedestalGlowMat) {
+                        this.pedestalGlowMat.color.setHex(0x8cff8a);
+                        this.pedestalGlowMat.opacity = 0.34;
+                    }
+                    if (this.pedestalLight) {
+                        this.pedestalLight.color.setHex(0x88ff8a);
+                        this.pedestalLight.intensity = 0.85;
+                    }
                 } else {
                     this.pedestalWoodMat.color.setHex(0x4a2a18);
+                    this.pedestalWoodMat.emissive.setHex(0x160906);
+                    this.pedestalWoodMat.emissiveIntensity = 0.18;
                     this.pedestalMetalMat.color.setHex(0xd4af37);
-                    this.pedestalMetalMat.emissive.setHex(0x000000);
+                    this.pedestalMetalMat.emissive.setHex(0x5a3500);
+                    this.pedestalMetalMat.emissiveIntensity = 0.28;
+                    if (this.pedestalGlowMat) {
+                        this.pedestalGlowMat.color.setHex(0xffc95a);
+                        this.pedestalGlowMat.opacity = 0.18;
+                    }
+                    if (this.pedestalLight) {
+                        this.pedestalLight.color.setHex(0xffc65a);
+                        this.pedestalLight.intensity = 0.35;
+                    }
                 }
             }
 
@@ -2343,10 +2629,13 @@
                 this.cloudMachine = null;
                 this.coinSlot = null;
                 this.slotLever = null;
+                this.skyCoinTray = null;
                 this.skyCoins = [];
                 this.skyMovableObjects = [];
                 this.selectedSkyObject = null;
                 this.dispensedClouds = [];
+                this.cloudGripControllers = { left: null, right: null };
+                this.cloudScaleGesture = null;
                 this.coinsCollected = 0;
                 this.skyFloorModel = null;
                 if (this.birds) {
@@ -2501,9 +2790,21 @@
                 // Madera oscura para el pilar
                 const woodDark = new THREE.MeshStandardMaterial({ color: 0x3b2410, roughness: 0.85, metalness: 0.0 });
                 // Madera media para el panel
-                const woodPanel = new THREE.MeshStandardMaterial({ color: 0x6b3f1e, roughness: 0.78, metalness: 0.0 });
+                const woodPanel = new THREE.MeshStandardMaterial({
+                    color: 0x6b3f1e,
+                    roughness: 0.78,
+                    metalness: 0.0,
+                    emissive: new THREE.Color(0x2a1206),
+                    emissiveIntensity: 0.24
+                });
                 // Marco / borde tallado más claro
-                const woodFrame = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.7, metalness: 0.0 });
+                const woodFrame = new THREE.MeshStandardMaterial({
+                    color: 0x8b5a2b,
+                    roughness: 0.7,
+                    metalness: 0.0,
+                    emissive: new THREE.Color(0x5c300e),
+                    emissiveIntensity: 0.25
+                });
 
                 // Pilar octogonal de madera
                 const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.10, 1.1, 8), woodDark);
@@ -2544,12 +2845,87 @@
                 textPanel.position.set(0, 1.18, 0.028);
                 group.add(textPanel);
 
+                const glowMat = new THREE.MeshBasicMaterial({
+                    color: 0xffd778,
+                    transparent: true,
+                    opacity: 0.18,
+                    depthWrite: false,
+                    blending: THREE.AdditiveBlending,
+                    side: THREE.DoubleSide
+                });
+                const glowPanel = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.20), glowMat);
+                glowPanel.position.set(0, 1.18, 0.031);
+                group.add(glowPanel);
+
                 // Luz cálida tenue (vela / lámpara de madera)
-                const light = new THREE.PointLight(0xe8c97a, 0.5, 1.5);
+                const light = new THREE.PointLight(0xffd778, 0.75, 1.7);
                 light.position.set(0, 1.35, 0.25);
                 group.add(light);
 
+                group.userData.exitSign = {
+                    panelMat: woodPanel,
+                    frameMat: woodFrame,
+                    glowMat,
+                    light,
+                    activeUntil: 0
+                };
+
                 return group;
+            }
+
+            setExitSignState(signGroup, active = false) {
+                const sign = signGroup?.userData?.exitSign;
+                if (!sign) return;
+                if (active) {
+                    sign.panelMat.emissive.setHex(0x10320e);
+                    sign.panelMat.emissiveIntensity = 0.5;
+                    sign.frameMat.color.setHex(0x9fd46d);
+                    sign.frameMat.emissive.setHex(0x315b24);
+                    sign.frameMat.emissiveIntensity = 0.65;
+                    sign.glowMat.color.setHex(0x9dff82);
+                    sign.glowMat.opacity = 0.36;
+                    sign.light.color.setHex(0x9dff82);
+                    sign.light.intensity = 1.25;
+                    sign.activeUntil = performance.now() + 900;
+                } else {
+                    sign.panelMat.emissive.setHex(0x2a1206);
+                    sign.panelMat.emissiveIntensity = 0.24;
+                    sign.frameMat.color.setHex(0x8b5a2b);
+                    sign.frameMat.emissive.setHex(0x5c300e);
+                    sign.frameMat.emissiveIntensity = 0.25;
+                    sign.glowMat.color.setHex(0xffd778);
+                    sign.glowMat.opacity = 0.18;
+                    sign.light.color.setHex(0xffd778);
+                    sign.light.intensity = 0.75;
+                }
+            }
+
+            flashExitSign() {
+                this.setExitSignState(this.leverModel, true);
+            }
+
+            updateExitSignGlow() {
+                const sign = this.leverModel?.userData?.exitSign;
+                if (!sign) return;
+                if (sign.activeUntil && performance.now() > sign.activeUntil) {
+                    sign.activeUntil = 0;
+                    this.setExitSignState(this.leverModel, false);
+                }
+            }
+
+            updatePedestalGlow(elapsedTime) {
+                if (!this.pedestalGlowMat && !this.pedestalLight) return;
+                const pulse = (Math.sin(elapsedTime * 3.2) + 1) * 0.5;
+                if (this.pedestalGlowMat) {
+                    const baseOpacity = this.pedestalIsActive ? 0.30 : 0.15;
+                    const pulseOpacity = this.pedestalIsActive ? 0.08 : 0.035;
+                    this.pedestalGlowMat.opacity = baseOpacity + pulse * pulseOpacity;
+                }
+                if (this.pedestalLight) {
+                    const baseIntensity = this.pedestalIsActive ? 0.72 : 0.30;
+                    const pulseIntensity = this.pedestalIsActive ? 0.18 : 0.08;
+                    this.pedestalLight.intensity = baseIntensity + pulse * pulseIntensity;
+                }
             }
 
             createWoodSignTexture(text) {
@@ -3129,7 +3505,7 @@
                 green.material.emissiveIntensity = redActive ? 0.15 : 1.5;
             }
 
-            handleTrainScenePointerDown() {
+            handleTrainScenePointerDown({ allowObjectGrab = true } = {}) {
                 if (!this.trainInteractiveObjects.length) return false;
 
                 const exitHit = this.trainExitButton ? this.raycaster.intersectObject(this.trainExitButton, true) : [];
@@ -3163,6 +3539,8 @@
                     this.playTrainWhistleSound();
                     return true;
                 }
+
+                if (!allowObjectGrab) return false;
 
                 const intersects = this.raycaster.intersectObjects(this.trainMovableObjects, true);
                 if (intersects.length === 0) return false;
@@ -3470,6 +3848,7 @@
                 skyGroup.add(sunGlow);
 
                 this.createCloudDispenser();
+                this.createSkyCoinTray();
                 this.createSkyCoins();
 
                 this.viajeGroup.add(skyGroup);
@@ -3640,8 +4019,8 @@
                 };
 
                 // Rojo (izquierda, eje X): alejado un poco más del centro
-                makeWall('left', new THREE.Vector3(0.03, 1.2, 3.9), new THREE.Vector3(-1.45, 0.6, -0.30), 0xff6b6b);
-                makeWall('right', new THREE.Vector3(0.03, 1.2, 3.9), new THREE.Vector3(1.15, 0.6, -0.30), 0x5dade2);
+                makeWall('left', new THREE.Vector3(0.03, 1.2, 3.9), new THREE.Vector3(-1.40, 0.6, -0.30), 0xff6b6b);
+                makeWall('right', new THREE.Vector3(0.03, 1.2, 3.9), new THREE.Vector3(1.20, 0.6, -0.30), 0x5dade2);
 
                 const makeSideGrid = (label, x, color) => {
                     const zMin = -2.25;
@@ -3666,8 +4045,8 @@
                     helperGroup.add(grid);
                 };
 
-                makeSideGrid('left', -1.43, 0xff6b6b);
-                makeSideGrid('right', 1.13, 0x5dade2);
+                makeSideGrid('left', -1.38, 0xff6b6b);
+                makeSideGrid('right', 1.18, 0x5dade2);
                 // Verde (pared trasera, eje Z): alejada del centro + un poco más, y expandida en X
                 makeWall('back', new THREE.Vector3(2.9, 1.2, 0.03), new THREE.Vector3(-0.15, 0.6, -1.80), 0x58d68d);
                 // Amarillo (pared frontal, eje Z): alejada del centro hacia adelante, expandida en X
@@ -4140,12 +4519,59 @@
                 base.castShadow = true;
                 machine.add(base);
 
-                machine.position.set(0, 0.52, -0.65);
+                // Pared verde = fondo (-Z), pared azul = derecha (+X).
+                machine.position.set(0.10, 0.52, -0.97);
                 machine.userData = { type: 'cloudMachine' };
                 this.cloudMachine = machine;
                 this.viajeGroup.add(machine);
-                // Dispenser automático: la primera nube sale enseguida
-                this._cloudAutoTimer = 420;
+            }
+
+            createSkyCoinTray() {
+                const tray = new THREE.Group();
+                tray.name = 'bandeja-monedas-nubes';
+
+                const trayMat = new THREE.MeshStandardMaterial({ color: 0x7c552a, roughness: 0.72, metalness: 0.08 });
+                const rimMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.32, metalness: 0.78 });
+
+                const floor = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.045, 0.52), trayMat);
+                floor.position.y = 0.025;
+                floor.castShadow = true;
+                floor.receiveShadow = true;
+                tray.add(floor);
+
+                const backRim = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.11, 0.045), rimMat);
+                backRim.position.set(0, 0.095, -0.26);
+                backRim.castShadow = true;
+                tray.add(backRim);
+
+                const frontRim = backRim.clone();
+                frontRim.position.z = 0.26;
+                tray.add(frontRim);
+
+                const leftRim = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.11, 0.52), rimMat);
+                leftRim.position.set(-0.43, 0.095, 0);
+                leftRim.castShadow = true;
+                tray.add(leftRim);
+
+                const rightRim = leftRim.clone();
+                rightRim.position.x = 0.43;
+                tray.add(rightRim);
+
+                const machinePos = this.cloudMachine?.position || new THREE.Vector3(0.10, 0.52, -0.97);
+                // Bandeja 0.1 hacia la pared roja (-X) desde la maquina, y delante de la boca.
+                tray.position.set(machinePos.x - 0.10, 0, machinePos.z + 0.58);
+                tray.userData = { type: 'skyCoinTray' };
+                this.skyCoinTray = tray;
+                this.viajeGroup.add(tray);
+
+                const topY = tray.position.y + floor.position.y + 0.045 / 2;
+                this.registerStaticSurface(
+                    tray.position.x - 0.38,
+                    tray.position.x + 0.38,
+                    tray.position.z - 0.22,
+                    tray.position.z + 0.22,
+                    topY
+                );
             }
 
             createSkyCoin() {
@@ -4207,31 +4633,22 @@
                 coin.position.set(
                     this.cloudMachine.position.x,
                     this.cloudMachine.position.y + 0.65,
-                    this.cloudMachine.position.z + 0.35
+                    this.cloudMachine.position.z + 0.52
                 );
                 coin.userData.type = 'skyCoinPhysics';
                 this.skyCoins.push(coin);
                 this.skyMovableObjects.push(coin);
                 this.viajeGroup.add(coin);
-                this.registerPhysicsObject(coin, 1.05);
+                this.registerPhysicsObject(coin, 0.0);
                 const phys = this.physicsObjects.find(p => p.mesh === coin);
-                if (phys) phys.velocity.set(0, 0, 0);
+                if (phys) {
+                    phys.velocity.set((Math.random() - 0.5) * 0.05, 0, 0.02);
+                    phys.resting = false;
+                }
                 this.playClinkSound();
             }
 
-            handleSkySceneClick() {
-                const dispensedHit = this.raycaster.intersectObjects(this.dispensedClouds, true);
-                if (dispensedHit.length > 0) {
-                    const cloud = this.findInteractiveParent(dispensedHit[0].object, this.dispensedClouds);
-                    if (cloud && !cloud.userData.isPreview) {
-                        cloud.userData.sizeStep = (cloud.userData.sizeStep + 1) % 3;
-                        const targetScale = [0.55, 0.9, 1.25][cloud.userData.sizeStep];
-                        cloud.userData.targetScale = targetScale;
-                        this.playSparkleSound();
-                        return true;
-                    }
-                }
-
+            handleSkySceneClick({ allowObjectGrab = true } = {}) {
                 const leverHit = this.slotLever ? this.raycaster.intersectObject(this.slotLever, true) : [];
                 if (leverHit.length > 0) {
                     this.animateSlotLever();
@@ -4239,19 +4656,21 @@
                     return true;
                 }
 
-                const coinHit = this.raycaster.intersectObjects(this.skyMovableObjects || [], true);
-                if (coinHit.length > 0) {
-                    const coin = this.findInteractiveParent(coinHit[0].object, this.skyMovableObjects);
-                    if (coin) {
-                        this.selectedSkyObject = coin;
-                        const currentY = this.selectedSkyObject.position.y;
-                        this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, currentY, 0));
-                        if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
-                            this.offset.copy(this.selectedSkyObject.position).sub(this.intersectionPoint);
+                if (allowObjectGrab) {
+                    const coinHit = this.raycaster.intersectObjects(this.skyMovableObjects || [], true);
+                    if (coinHit.length > 0) {
+                        const coin = this.findInteractiveParent(coinHit[0].object, this.skyMovableObjects);
+                        if (coin) {
+                            this.selectedSkyObject = coin;
+                            const currentY = this.selectedSkyObject.position.y;
+                            this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, currentY, 0));
+                            if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
+                                this.offset.copy(this.selectedSkyObject.position).sub(this.intersectionPoint);
+                            }
+                            this.selectedSkyObject.position.y += 0.05;
+                            this.playWobbleSound();
+                            return true;
                         }
-                        this.selectedSkyObject.position.y += 0.05;
-                        this.playWobbleSound();
-                        return true;
                     }
                 }
 
@@ -4340,9 +4759,9 @@
             dispenseCloud() {
                 const cloud = this.createSingleFallbackCloud();
                 // Sale desde la boca del dispenser
-                const machinePos = this.cloudMachine ? this.cloudMachine.position.clone() : new THREE.Vector3(0, 0.52, -0.65);
-                cloud.position.set(machinePos.x, machinePos.y + 0.65, machinePos.z + 0.35);
-                cloud.scale.setScalar(0.75);
+                const machinePos = this.cloudMachine ? this.cloudMachine.position.clone() : new THREE.Vector3(0.10, 0.52, -0.97);
+                cloud.position.set(machinePos.x, machinePos.y + 0.65, machinePos.z + 0.62);
+                cloud.scale.setScalar(0.35);
                 cloud.userData = {
                     type: 'dispensedCloud',
                     age: 0,
@@ -4350,8 +4769,8 @@
                     flyingAway: false,
                     // 1 minuto en el piso (a ~60fps) antes de irse volando
                     groundedFrames: 3600,
-                    targetScale: 0.75,
-                    sizeStep: 1
+                    targetScale: 0.35,
+                    sizeStep: 0
                 };
                 this.dispensedClouds.push(cloud);
                 this.viajeGroup.add(cloud);
@@ -4420,15 +4839,18 @@
                     const size = box.getSize(new THREE.Vector3());
                     const maxDim = Math.max(size.x, size.y, size.z);
                     const scaleFactor = 20.0 / maxDim;
-                    const center = box.getCenter(new THREE.Vector3());
 
                     this.skyFloorModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
-                    this.skyFloorModel.position.set(
-                        -center.x * scaleFactor,
-                        -box.min.y * scaleFactor,
-                        -center.z * scaleFactor
-                    );
                     this.skyFloorModel.rotation.y = Math.PI;
+                    this.skyFloorModel.position.set(0, 0, 0);
+                    this.skyFloorModel.updateMatrixWorld(true);
+                    const fittedBox = new THREE.Box3().setFromObject(this.skyFloorModel);
+                    const fittedCenter = fittedBox.getCenter(new THREE.Vector3());
+                    this.skyFloorModel.position.set(
+                        -fittedCenter.x,
+                        -fittedBox.min.y,
+                        -fittedCenter.z
+                    );
                     this.viajeGroup.add(this.skyFloorModel);
                 }, undefined, () => {});
 
@@ -4651,6 +5073,7 @@
                         this.leverCurrentRotation = THREE.MathUtils.lerp(this.leverCurrentRotation, this.leverTargetRotation, 0.15);
                         this.leverHandle.rotation.x = -Math.PI / 4 + this.leverCurrentRotation;
                     }
+                    this.updateExitSignGlow();
 
                     // Oleaje de mar procedural low-poly
                     if (this.seaMesh) {
@@ -4706,6 +5129,8 @@
                         this.cloudMachine.rotation.y = Math.sin(elapsedTime * 0.7) * 0.05;
                     }
 
+                    this.updateCloudScaleGesture();
+
                     if (this.dispensedClouds && this.dispensedClouds.length > 0) {
                         const aliveClouds = [];
                         this.dispensedClouds.forEach(cloud => {
@@ -4751,15 +5176,6 @@
                         this.dispensedClouds = aliveClouds;
                     }
 
-                    // Dispenser automático: suelta una nube cada ~8 segundos
-                    if (this.cloudMachine) {
-                        this._cloudAutoTimer = (this._cloudAutoTimer || 0) + 1;
-                        if (this._cloudAutoTimer >= 480) {
-                            this._cloudAutoTimer = 0;
-                            this.dispenseCloud();
-                        }
-                    }
-
                     if (this.largePlaneModel) {
                         const baseY = this.largePlaneModel.userData.baseY || 0.9;
                         this.largePlaneModel.position.y = baseY + Math.sin(elapsedTime * 1.1) * 0.035;
@@ -4793,6 +5209,7 @@
                 // Deteccion de cualquier juguete en pedestal
                 const toyOnPedestal = this.getToyOnPedestal();
                 this.setPedestalState(toyOnPedestal);
+                this.updatePedestalGlow(elapsedTime);
 
                 if (toyOnPedestal && !this.transitionTriggered) {
                     this.triggerTravelTransition(toyOnPedestal.userData.type);
@@ -5211,46 +5628,6 @@
     </script>
   </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
