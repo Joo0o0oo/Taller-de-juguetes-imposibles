@@ -337,6 +337,7 @@
                 this.chestGroup = null;
                 this.boatAmbientLight = null;
                 this.boatWallHelpers = null;
+                this.sceneDirectionHelpers = [];
                 this.chestDimensionHelpers = [];
                 this.boatWheelInstalled = false;
                 this.boatTurnTarget = 0;
@@ -465,6 +466,7 @@
                 renderer.xr.addEventListener('sessionstart', () => {
                     this.isXRSessionActive = true;
                     if (this.boatWallHelpers) this.boatWallHelpers.visible = false;
+                    (this.sceneDirectionHelpers || []).forEach(helper => helper.visible = false);
                     (this.chestDimensionHelpers || []).forEach(helper => helper.visible = false);
                     (this.chestDimensionHelpers || []).forEach(helper => helper.visible = false);
                     this.xrButtonStates.clear();
@@ -476,6 +478,7 @@
                 renderer.xr.addEventListener('sessionend', () => {
                     this.isXRSessionActive = false;
                     if (this.boatWallHelpers && this.activeTravelToy === 'boat') this.boatWallHelpers.visible = true;
+                    (this.sceneDirectionHelpers || []).forEach(helper => helper.visible = true);
                     if (this.activeTravelToy === 'boat') (this.chestDimensionHelpers || []).forEach(helper => helper.visible = true);
                     if (this.activeTravelToy === 'boat') (this.chestDimensionHelpers || []).forEach(helper => helper.visible = true);
                     this.activeXRController = null;
@@ -978,6 +981,13 @@
                 const width = 4;
                 const height = 4;
                 const length = 4.5;
+                roomGroup.add(this.createSceneDirectionHelper({
+                    name: 'workshop-direction-helper',
+                    width,
+                    depth: length,
+                    height: 1.25,
+                    center: new THREE.Vector3(0, 0, -1)
+                }));
 
                 // 1. Piso de tablones de madera
                 const numPlanks = 14;
@@ -2092,7 +2102,9 @@
                 if (this.boatWheelInstalled && this.boatWheel) {
                     const wheelHit = this.raycaster.intersectObject(this.boatWheel, true);
                     if (wheelHit.length > 0) {
+                        const fixedPos = this.boatWheel.position.clone();
                         this.boatWheel.rotation.z += Math.PI / 8;
+                        this.boatWheel.position.copy(fixedPos);
                         this.boatTurnTarget += Math.PI / 5;
                         if (this.boatSceneRoot) {
                             this.boatSceneRoot.userData.tiltTarget = (this.boatSceneRoot.userData.tiltTarget || 0) === 0.08 ? -0.08 : 0.08;
@@ -2286,6 +2298,7 @@
                 this.chestGroup = null;
                 this.boatAmbientLight = null;
                 this.boatWallHelpers = null;
+                this.sceneDirectionHelpers = [];
                 this.chestDimensionHelpers = [];
                 this.boatWheelInstalled = false;
                 this.boatTurnTarget = 0;
@@ -2702,6 +2715,14 @@
                 floor.receiveShadow = true;
                 this.trainSceneRoot.add(floor);
 
+                this.trainSceneRoot.add(this.createSceneDirectionHelper({
+                    name: 'train-direction-helper',
+                    width: 14.8,
+                    depth: 14.8,
+                    height: 1.35,
+                    center: new THREE.Vector3(0, 0, 0)
+                }));
+
                 const platform = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.18, 6.8), platformMat);
                 platform.position.set(0, 0.09, 0);
                 platform.receiveShadow = true;
@@ -2822,8 +2843,9 @@
                 const a0 = Math.PI / 2; // punto del círculo frente al andén
                 this.trainCircuitAngle = a0;
                 consist.position.set(Math.cos(a0) * TR, 0.09, Math.sin(a0) * TR);
-                // Orientación tangente al círculo (simula tren sobre rieles)
-                consist.rotation.y = -(a0 + Math.PI / 2) + Math.PI;
+                // Orientación tangente al círculo, alineada con la pared amarilla al iniciar.
+                const aNext = a0 + 0.02;
+                consist.rotation.y = Math.atan2(Math.cos(aNext) * TR - consist.position.x, Math.sin(aNext) * TR - consist.position.z);
                 consist.userData.baseY = 0.09;
                 this.trainLargeModel = consist;
                 this.trainSceneRoot.add(consist);
@@ -3424,6 +3446,14 @@
                 infiniteFloor.receiveShadow = true;
                 skyGroup.add(infiniteFloor);
 
+                skyGroup.add(this.createSceneDirectionHelper({
+                    name: 'sky-direction-helper',
+                    width: 4.2,
+                    depth: 3.4,
+                    height: 1.45,
+                    center: new THREE.Vector3(0, 0, 0.15)
+                }));
+
                 const haze = new THREE.Mesh(
                     new THREE.CircleGeometry(14, 64),
                     new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 })
@@ -3612,6 +3642,32 @@
                 // Rojo (izquierda, eje X): alejado un poco más del centro
                 makeWall('left', new THREE.Vector3(0.03, 1.2, 3.9), new THREE.Vector3(-1.45, 0.6, -0.30), 0xff6b6b);
                 makeWall('right', new THREE.Vector3(0.03, 1.2, 3.9), new THREE.Vector3(1.15, 0.6, -0.30), 0x5dade2);
+
+                const makeSideGrid = (label, x, color) => {
+                    const zMin = -2.25;
+                    const zMax = 1.65;
+                    const yMin = 0.02;
+                    const yMax = 1.18;
+                    const points = [];
+
+                    for (let z = zMin; z <= zMax + 0.001; z += 0.30) {
+                        points.push(new THREE.Vector3(x, yMin, z), new THREE.Vector3(x, yMax, z));
+                    }
+                    for (let y = yMin; y <= yMax + 0.001; y += 0.20) {
+                        points.push(new THREE.Vector3(x, y, zMin), new THREE.Vector3(x, y, zMax));
+                    }
+
+                    const grid = new THREE.LineSegments(
+                        new THREE.BufferGeometry().setFromPoints(points),
+                        new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.85 })
+                    );
+                    grid.name = `boat-${label}-wall-grid`;
+                    grid.renderOrder = 25;
+                    helperGroup.add(grid);
+                };
+
+                makeSideGrid('left', -1.43, 0xff6b6b);
+                makeSideGrid('right', 1.13, 0x5dade2);
                 // Verde (pared trasera, eje Z): alejada del centro + un poco más, y expandida en X
                 makeWall('back', new THREE.Vector3(2.9, 1.2, 0.03), new THREE.Vector3(-0.15, 0.6, -1.80), 0x58d68d);
                 // Amarillo (pared frontal, eje Z): alejada del centro hacia adelante, expandida en X
@@ -3626,6 +3682,58 @@
 
                 this.boatWallHelpers = helperGroup;
                 this.boatSceneRoot.add(helperGroup);
+            }
+
+            createSceneDirectionHelper({
+                name = 'scene-direction-helper',
+                width = 4,
+                depth = 4,
+                height = 1.2,
+                center = new THREE.Vector3(0, 0, 0),
+                floorOpacity = 0.65
+            } = {}) {
+                const helperGroup = new THREE.Group();
+                helperGroup.name = name;
+                helperGroup.visible = !this.isXRSessionActive;
+
+                const wallThickness = 0.03;
+                const y = height / 2;
+                const makeWall = (label, size, position, color) => {
+                    const wall = new THREE.Mesh(
+                        new THREE.BoxGeometry(size.x, size.y, size.z),
+                        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.18, wireframe: false })
+                    );
+                    wall.name = `${name}-${label}`;
+                    wall.position.copy(position);
+                    wall.renderOrder = 20;
+                    helperGroup.add(wall);
+
+                    const edges = new THREE.LineSegments(
+                        new THREE.EdgesGeometry(new THREE.BoxGeometry(size.x, size.y, size.z)),
+                        new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9 })
+                    );
+                    edges.position.copy(position);
+                    helperGroup.add(edges);
+                };
+
+                makeWall('left-red', new THREE.Vector3(wallThickness, height, depth), new THREE.Vector3(center.x - width / 2, y, center.z), 0xff6b6b);
+                makeWall('right-blue', new THREE.Vector3(wallThickness, height, depth), new THREE.Vector3(center.x + width / 2, y, center.z), 0x5dade2);
+                makeWall('back-green', new THREE.Vector3(width, height, wallThickness), new THREE.Vector3(center.x, y, center.z - depth / 2), 0x58d68d);
+                makeWall('front-yellow', new THREE.Vector3(width, height, wallThickness), new THREE.Vector3(center.x, y, center.z + depth / 2), 0xf4d03f);
+
+                const floorOutline = new THREE.LineSegments(
+                    new THREE.EdgesGeometry(new THREE.BoxGeometry(width, 0.01, depth)),
+                    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: floorOpacity })
+                );
+                floorOutline.position.set(center.x, 0, center.z);
+                helperGroup.add(floorOutline);
+
+                const axes = new THREE.AxesHelper(0.35);
+                axes.position.set(center.x, 0.05, center.z);
+                helperGroup.add(axes);
+
+                this.sceneDirectionHelpers.push(helperGroup);
+                return helperGroup;
             }
             createBoatCratesAndCandles() {
                 const bigCratePositions = [
@@ -3943,7 +4051,7 @@
                 this.loadScaledModel(modelUrls.timonBase, 0.807, (base) => {
                     base.name = 'base-timon-fija';
                     // Centrada en X, sobre el borde amarillo literal del barco.
-                    base.position.set(0.0, 0.0, 1.72);
+                    base.position.set(0.0, 0.0, 1.0);
                     // Rotado 90° respecto a antes, mirando hacia adentro
                     base.rotation.y = 0;
                     base.userData = { type: 'boatWheelBase' };
@@ -3951,15 +4059,19 @@
                     this.addBoatObject(base, false);
                 });
 
-                this.loadScaledModel(modelUrls.timon, 0.55, (wheel) => {
+                this.loadScaledModel(modelUrls.timon, 0.55, (wheelModel) => {
+                    const wheel = new THREE.Group();
                     wheel.name = 'timon-suelto';
-                    // Suelto al lado de las cajas fijas.
-                    wheel.position.set(-0.42, 0.12, -0.62);
+                    wheel.add(wheelModel);
+                    wheelModel.name = 'timon-modelo';
+                    // Ya instalado en la base del timon.
+                    wheel.position.set(0.0, 0.45, 0.92);
                     // Rotado 90° respecto a antes; cara hacia adentro de la escena (+Z)
                     wheel.rotation.set(0, 0, 0);
-                    wheel.userData = { type: 'boatWheel', movable: true, installed: false };
+                    wheel.userData = { type: 'boatWheel', movable: false, installed: true };
                     this.boatWheel = wheel;
-                    this.addBoatObject(wheel, true);
+                    this.boatWheelInstalled = true;
+                    this.addBoatObject(wheel, false);
                 });
             }
 
@@ -5099,23 +5211,6 @@
     </script>
   </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
