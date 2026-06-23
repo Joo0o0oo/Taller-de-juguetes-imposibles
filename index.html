@@ -44,7 +44,7 @@
       }
       body {
         font-family: 'Inter', sans-serif;
-        background-color: #1e2010;
+        background-color: #464644;
         overflow: hidden;
         color: var(--col-cream);
       }
@@ -62,14 +62,14 @@
         width: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: rgba(30, 32, 16, 0.5);
+        background: rgba(70, 70, 68, 0.5);
       }
       ::-webkit-scrollbar-thumb {
-        background: rgba(113, 131, 72, 0.5);
+        background: rgba(76, 92, 45, 0.72);
         border-radius: 3px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: rgba(113, 131, 72, 0.8);
+        background: rgba(113, 131, 72, 0.92);
       }
     </style>
   </head>
@@ -213,7 +213,7 @@
                 <div class="bg-[#464644]/45 border border-[#718348]/25 rounded-lg px-3 py-2">Grip: tomar y soltar objetos.</div>
                 <div class="bg-[#464644]/45 border border-[#718348]/25 rounded-lg px-3 py-2">Trigger: activar botones, palancas y carteles.</div>
                 <div class="bg-[#464644]/45 border border-[#718348]/25 rounded-lg px-3 py-2">Boton X izquierdo: menu de opciones.</div>
-                <div class="bg-[#464644]/45 border border-[#718348]/25 rounded-lg px-3 py-2">Dos grips en nubes: separar agranda, acercar achica.</div>
+                <div class="bg-[#464644]/45 border border-[#718348]/25 rounded-lg px-3 py-2">Grip sobre nubes: tomar, mover y apilar.</div>
             </div>
             <div class="mt-6 w-48 h-1 bg-[#4C5C2D]/70 rounded-full mx-auto overflow-hidden">
                 <div class="h-full bg-[#718348] animate-[pulse_1.5s_infinite] w-full"></div>
@@ -261,6 +261,7 @@
             cofreLid: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/main/1tapa-cofre.glb",
             timonBase: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1timon-base.glb",
             timon: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1timon.glb",
+            onboardingBook: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/libro.glb",
             fish: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/fish_-_low_poly_-_rigged_-_animated.glb",
             garfio: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1garfio.glb",
             sombreroPirata: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1sombrero%20pirata.glb",
@@ -359,11 +360,20 @@
                 this.previewInitialPitch = 0;
                 this.xrMenu = null;
                 this.xrMenuItems = [];
+                this.xrToyMenuPanel = null;
                 this.xrMenuOpen = false;
                 this.xrLastMenuToggleTime = 0;
                 this.xrLightLevel = 120;
                 this.xrLightValueMesh = null;
                 this.xrLeftHandHint = null;
+                this.onboardingBook = null;
+                this.onboardingBookLoading = false;
+                this.onboardingPanel = null;
+                this.onboardingPanelItems = [];
+                this.onboardingOpen = false;
+                this.onboardingStep = 0;
+                this.xrPerformanceMode = false;
+                this._seaLastNormalUpdate = 0;
                 this.heldObjectLeft = null;
                 this.heldObjectRight = null;
                 this.GRAB_DISTANCE = 0.22;
@@ -385,6 +395,8 @@
                 this.largePlaneModel = null;
                 this.skyFloorModel = null;
                 this.skySceneFloorY = 0.0;
+                this.planeSceneGroup = null;
+                this.planeSceneYOffset = -0.5;
                 this.cloudMachine = null;
                 this.coinSlot = null;
                 this.slotLever = null;
@@ -393,8 +405,6 @@
                 this.skyMovableObjects = [];
                 this.selectedSkyObject = null;
                 this.dispensedClouds = [];
-                this.cloudGripControllers = { left: null, right: null };
-                this.cloudScaleGesture = null;
                 this.coinsCollected = 0;
                 this.boatInteractiveObjects = [];
                 this.boatMovableObjects = [];
@@ -430,6 +440,7 @@
                 this.trainJustBoarded = false;
                 this.trainInnerLights = [];
                 this.lastTrainSteamTime = 0;
+                this.trainFireflies = null;
                 this.truckSceneRoot = null;
                 this.truckInteractiveObjects = [];
                 this.truckMovableObjects = [];
@@ -460,6 +471,15 @@
                 this.musicTimer = null;
                 this.musicNextNoteTime = 0;
                 this.melodyStep = 0;
+                this.sceneAudio = {
+                    mode: null,
+                    sources: [],
+                    mediaElements: [],
+                    timers: [],
+                    trainMusicTimer: null,
+                    trainMusicStep: 0,
+                    planeMusicStep: 0
+                };
 
                 // Melodía clásica de Cajita de Música
                 this.musicBoxMelody = [
@@ -540,9 +560,9 @@
 
                 renderer.xr.addEventListener('sessionstart', () => {
                     this.isXRSessionActive = true;
+                    this.setXRPerformanceMode(true);
                     if (this.boatWallHelpers) this.boatWallHelpers.visible = false;
                     (this.sceneDirectionHelpers || []).forEach(helper => helper.visible = false);
-                    (this.chestDimensionHelpers || []).forEach(helper => helper.visible = false);
                     (this.chestDimensionHelpers || []).forEach(helper => helper.visible = false);
                     this.xrButtonStates.clear();
                     this.createXRMenu();
@@ -552,9 +572,9 @@
 
                 renderer.xr.addEventListener('sessionend', () => {
                     this.isXRSessionActive = false;
+                    this.setXRPerformanceMode(false);
                     if (this.boatWallHelpers && this.activeTravelToy === 'boat') this.boatWallHelpers.visible = true;
                     (this.sceneDirectionHelpers || []).forEach(helper => helper.visible = true);
-                    if (this.activeTravelToy === 'boat') (this.chestDimensionHelpers || []).forEach(helper => helper.visible = true);
                     if (this.activeTravelToy === 'boat') (this.chestDimensionHelpers || []).forEach(helper => helper.visible = true);
                     this.activeXRController = null;
                     this.selectedObject = null;
@@ -678,9 +698,9 @@
                     new THREE.MeshBasicMaterial({
                         map: this.createXRTextTexture('X\nMenu', 320, 180, {
                             size: 40,
-                            background: 'rgba(19, 9, 4, 0.82)',
-                            border: 'rgba(125, 211, 252, 0.85)',
-                            color: '#dff6ff'
+                            background: 'rgba(70, 70, 68, 0.9)',
+                            border: 'rgba(113, 131, 72, 0.9)',
+                            color: '#FFF4F5'
                         }),
                         transparent: true,
                         side: THREE.DoubleSide
@@ -695,12 +715,12 @@
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
-                ctx.fillStyle = options.background || 'rgba(24, 12, 4, 0.92)';
+                ctx.fillStyle = options.background || 'rgba(70, 70, 68, 0.94)';
                 ctx.fillRect(0, 0, width, height);
-                ctx.strokeStyle = options.border || 'rgba(245, 158, 11, 0.75)';
+                ctx.strokeStyle = options.border || 'rgba(113, 131, 72, 0.86)';
                 ctx.lineWidth = 8;
                 ctx.strokeRect(4, 4, width - 8, height - 8);
-                ctx.fillStyle = options.color || '#fde68a';
+                ctx.fillStyle = options.color || '#FFF4F5';
                 ctx.font = `${options.weight || 700} ${options.size || 34}px Inter, Arial, sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -716,6 +736,243 @@
                 return texture;
             }
 
+            createOnboardingBodyTexture(step) {
+                const pages = [
+                    {
+                        intro: 'Estas en el Taller de Juguetes Imposibles. Agarra juguetes, exploralos y viaja a mundos diminutos.',
+                        heading: 'La mecanica principal',
+                        detail: 'Lleva un juguete al pedestal central para viajar.',
+                        cards: ['Barco -> mar', 'Tren -> estacion', 'Avion -> nubes']
+                    },
+                    {
+                        intro: 'Controles de Meta Quest',
+                        rows: [
+                            ['Grip', 'Toma o suelta un objeto.'],
+                            ['X', 'Abre el menu de opciones con la mano izquierda.'],
+                            ['Brazo', 'Muevelo para levantar o lanzar objetos.']
+                        ]
+                    },
+                    {
+                        intro: 'Algunos secretos del taller',
+                        rows: [
+                            ['Avion', 'Al soltarlo en el aire puede salir volando.'],
+                            ['Objetos', 'Cajas, taburete y velas se pueden manipular.'],
+                            ['Salida', 'Usa la palanca para volver de cada mundo.']
+                        ]
+                    }
+                ];
+                const page = pages[step] || pages[0];
+                const canvas = document.createElement('canvas');
+                canvas.width = 1024;
+                canvas.height = 720;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#464644';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const drawWrapped = (text, x, y, maxWidth, lineHeight, color, font) => {
+                    ctx.fillStyle = color;
+                    ctx.font = font;
+                    const words = text.split(' ');
+                    let line = '';
+                    let currentY = y;
+                    words.forEach(word => {
+                        const candidate = line ? `${line} ${word}` : word;
+                        if (ctx.measureText(candidate).width > maxWidth && line) {
+                            ctx.fillText(line, x, currentY);
+                            currentY += lineHeight;
+                            line = word;
+                        } else {
+                            line = candidate;
+                        }
+                    });
+                    if (line) ctx.fillText(line, x, currentY);
+                    return currentY + lineHeight;
+                };
+
+                let y = drawWrapped(page.intro, 62, 72, 900, 44, '#FFF4F5', '500 34px Inter, Arial, sans-serif') + 18;
+                if (page.heading) {
+                    ctx.fillStyle = 'rgba(113, 131, 72, 0.22)';
+                    ctx.strokeStyle = '#718348';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.roundRect(46, y, 932, 252, 20);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = '#B9D27B';
+                    ctx.font = '600 34px Inter, Arial, sans-serif';
+                    ctx.fillText(page.heading, 76, y + 56);
+                    drawWrapped(page.detail, 76, y + 108, 860, 40, '#FFF4F5', '400 30px Inter, Arial, sans-serif');
+                    page.cards.forEach((card, index) => {
+                        const cardWidth = 270;
+                        const x = 70 + index * 300;
+                        ctx.fillStyle = '#4C5C2D';
+                        ctx.beginPath();
+                        ctx.roundRect(x, y + 168, cardWidth, 55, 12);
+                        ctx.fill();
+                        ctx.fillStyle = '#FFF4F5';
+                        ctx.font = '600 23px Inter, Arial, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(card, x + cardWidth / 2, y + 204);
+                        ctx.textAlign = 'left';
+                    });
+                } else {
+                    page.rows.forEach((row, index) => {
+                        const rowY = y + index * 145;
+                        ctx.fillStyle = 'rgba(76, 92, 45, 0.46)';
+                        ctx.strokeStyle = 'rgba(113, 131, 72, 0.72)';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.roundRect(46, rowY, 932, 112, 16);
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.fillStyle = '#718348';
+                        ctx.beginPath();
+                        ctx.roundRect(68, rowY + 25, 144, 60, 12);
+                        ctx.fill();
+                        ctx.fillStyle = '#FFF4F5';
+                        ctx.font = '600 28px Inter, Arial, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(row[0], 140, rowY + 64);
+                        ctx.textAlign = 'left';
+                        drawWrapped(row[1], 242, rowY + 47, 680, 33, '#FFF4F5', '400 27px Inter, Arial, sans-serif');
+                    });
+                }
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.colorSpace = THREE.SRGBColorSpace;
+                return texture;
+            }
+
+            replacePanelTexture(mesh, texture) {
+                const oldTexture = mesh.material.map;
+                mesh.material.map = texture;
+                mesh.material.needsUpdate = true;
+                if (oldTexture) oldTexture.dispose();
+            }
+
+            createOnboardingPanel() {
+                if (this.onboardingPanel) return;
+                const panel = new THREE.Group();
+                panel.name = 'onboarding-espacial-taller';
+                panel.visible = false;
+
+                const back = new THREE.Mesh(
+                    new THREE.PlaneGeometry(1.66, 1.68),
+                    new THREE.MeshBasicMaterial({ color: 0x464644, transparent: true, opacity: 0.98, side: THREE.DoubleSide })
+                );
+                back.position.z = -0.012;
+                panel.add(back);
+
+                const header = new THREE.Mesh(
+                    new THREE.PlaneGeometry(1.46, 0.19),
+                    new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide })
+                );
+                header.position.set(-0.06, 0.69, 0.002);
+                panel.add(header);
+
+                const step = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.26, 0.12),
+                    new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide })
+                );
+                step.position.set(0.59, 0.69, 0.003);
+                panel.add(step);
+
+                const body = new THREE.Mesh(
+                    new THREE.PlaneGeometry(1.46, 1.03),
+                    new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide })
+                );
+                body.position.set(0, 0.04, 0.002);
+                panel.add(body);
+
+                const makeButton = (label, x, action) => {
+                    const button = new THREE.Mesh(
+                        new THREE.PlaneGeometry(0.43, 0.16),
+                        new THREE.MeshBasicMaterial({ map: this.createXRTextTexture(label, 384, 128, { size: 27 }), transparent: true, side: THREE.DoubleSide })
+                    );
+                    button.position.set(x, -0.68, 0.004);
+                    button.userData.onboardingAction = action;
+                    panel.add(button);
+                    this.onboardingPanelItems.push(button);
+                    return button;
+                };
+
+                const previous = makeButton('Anterior', -0.48, 'previous');
+                const next = makeButton('Siguiente', 0.30, 'next');
+                const close = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.16, 0.16),
+                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('X', 128, 128, { size: 38, background: 'rgba(217, 104, 104, 0.58)', border: 'rgba(217, 104, 104, 0.94)' }), transparent: true, side: THREE.DoubleSide })
+                );
+                close.position.set(0.70, 0.69, 0.004);
+                close.userData.onboardingAction = 'close';
+                panel.add(close);
+                this.onboardingPanelItems.push(close);
+
+                panel.userData = { header, step, body, previous, next };
+                xb.core.scene.add(panel);
+                this.onboardingPanel = panel;
+                this.updateOnboardingPanel();
+            }
+
+            updateOnboardingPanel() {
+                if (!this.onboardingPanel) return;
+                const titles = ['Bienvenido al taller', 'Controles del mando', 'Tips y secretos'];
+                const { header, step, body, previous, next } = this.onboardingPanel.userData;
+                this.replacePanelTexture(header, this.createXRTextTexture(titles[this.onboardingStep], 640, 128, { size: 31, background: 'rgba(76, 92, 45, 0.98)', border: 'rgba(113, 131, 72, 0.96)' }));
+                this.replacePanelTexture(step, this.createXRTextTexture(`${this.onboardingStep + 1}/3`, 256, 128, { size: 30, background: 'rgba(70, 70, 68, 0.98)', border: 'rgba(113, 131, 72, 0.5)' }));
+                this.replacePanelTexture(body, this.createOnboardingBodyTexture(this.onboardingStep));
+                previous.visible = this.onboardingStep > 0;
+                this.replacePanelTexture(next, this.createXRTextTexture(this.onboardingStep === 2 ? 'Empezar' : 'Siguiente', 384, 128, { size: 27 }));
+            }
+
+            positionOnboardingPanelInFrontOfCamera() {
+                if (!this.onboardingPanel) return;
+                const camera = xb.core.renderer.xr.isPresenting ? xb.core.renderer.xr.getCamera(xb.core.camera) : xb.core.camera;
+                const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                const position = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld);
+                this.onboardingPanel.position.copy(position).add(direction.multiplyScalar(1.4));
+                this.onboardingPanel.position.y = Math.max(1.0, this.onboardingPanel.position.y - 0.05);
+                this.onboardingPanel.quaternion.copy(camera.quaternion);
+            }
+
+            openOnboarding() {
+                this.createOnboardingPanel();
+                this.onboardingStep = 0;
+                this.updateOnboardingPanel();
+                this.onboardingOpen = true;
+                this.onboardingPanel.visible = true;
+                this.setXRMenuVisible(false);
+                this.positionOnboardingPanelInFrontOfCamera();
+                this.playSparkleSound();
+            }
+
+            closeOnboarding() {
+                if (!this.onboardingPanel) return;
+                this.onboardingPanel.visible = false;
+                this.onboardingOpen = false;
+                this.playClinkSound();
+            }
+
+            handleOnboardingSelection() {
+                if (!this.onboardingOpen || !this.onboardingPanelItems.length) return false;
+                const hits = this.raycaster.intersectObjects(this.onboardingPanelItems, false);
+                if (hits.length === 0) return false;
+                const action = hits[0].object.userData.onboardingAction;
+                if (action === 'previous' && this.onboardingStep > 0) {
+                    this.onboardingStep--;
+                    this.updateOnboardingPanel();
+                    this.playClinkSound();
+                } else if (action === 'next') {
+                    if (this.onboardingStep === 2) this.closeOnboarding();
+                    else {
+                        this.onboardingStep++;
+                        this.updateOnboardingPanel();
+                        this.playClinkSound();
+                    }
+                } else if (action === 'close') {
+                    this.closeOnboarding();
+                }
+                return true;
+            }
+
             createXRMenu() {
                 if (this.xrMenu) return;
 
@@ -724,57 +981,58 @@
                 menu.visible = false;
 
                 const back = new THREE.Mesh(
-                    new THREE.PlaneGeometry(1.22, 1.34),
-                    new THREE.MeshBasicMaterial({ color: 0x130904, transparent: true, opacity: 0.88, side: THREE.DoubleSide })
+                    new THREE.PlaneGeometry(1.22, 2.18),
+                    new THREE.MeshBasicMaterial({ color: 0x464644, transparent: true, opacity: 0.92, side: THREE.DoubleSide })
                 );
                 back.position.z = -0.015;
                 menu.add(back);
 
                 const title = new THREE.Mesh(
                     new THREE.PlaneGeometry(1.02, 0.18),
-                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('Menu de opciones', 512, 128, { size: 36, background: 'rgba(69, 26, 3, 0.98)' }), transparent: true, side: THREE.DoubleSide })
+                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('Menu de inicio', 512, 128, { size: 36, background: 'rgba(76, 92, 45, 0.98)', border: 'rgba(113, 131, 72, 0.96)' }), transparent: true, side: THREE.DoubleSide })
                 );
-                title.position.y = 0.49;
+                title.position.y = 0.91;
                 menu.add(title);
 
                 this.xrMenuItems = [];
                 const lightLabel = new THREE.Mesh(
                     new THREE.PlaneGeometry(0.82, 0.13),
                     new THREE.MeshBasicMaterial({
-                        map: this.createXRTextTexture('Calibrar luz ambiente', 512, 96, { size: 28, background: 'rgba(24, 12, 4, 0.72)', border: 'rgba(245, 158, 11, 0.35)' }),
+                        map: this.createXRTextTexture('Calibrar luz ambiente', 512, 96, { size: 28, background: 'rgba(70, 70, 68, 0.86)', border: 'rgba(113, 131, 72, 0.55)' }),
                         transparent: true,
                         side: THREE.DoubleSide
                     })
                 );
-                lightLabel.position.set(0, 0.30, 0.002);
+                lightLabel.position.set(0, 0.71, 0.002);
                 menu.add(lightLabel);
 
                 const lightMinus = new THREE.Mesh(
                     new THREE.PlaneGeometry(0.22, 0.17),
                     new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('-', 256, 128, { size: 58 }), transparent: true, side: THREE.DoubleSide })
                 );
-                lightMinus.position.set(-0.38, 0.12, 0.002);
+                lightMinus.position.set(-0.38, 0.53, 0.002);
                 lightMinus.userData.xrMenuAction = 'light-down';
                 menu.add(lightMinus);
                 this.xrMenuItems.push(lightMinus);
 
                 this.xrLightValueMesh = new THREE.Mesh(
                     new THREE.PlaneGeometry(0.38, 0.17),
-                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture(`${this.xrLightLevel}%`, 256, 128, { size: 38, background: 'rgba(69, 26, 3, 0.95)' }), transparent: true, side: THREE.DoubleSide })
+                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture(`${this.xrLightLevel}%`, 256, 128, { size: 38, background: 'rgba(76, 92, 45, 0.95)' }), transparent: true, side: THREE.DoubleSide })
                 );
-                this.xrLightValueMesh.position.set(0, 0.12, 0.002);
+                this.xrLightValueMesh.position.set(0, 0.53, 0.002);
                 menu.add(this.xrLightValueMesh);
 
                 const lightPlus = new THREE.Mesh(
                     new THREE.PlaneGeometry(0.22, 0.17),
                     new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('+', 256, 128, { size: 52 }), transparent: true, side: THREE.DoubleSide })
                 );
-                lightPlus.position.set(0.38, 0.12, 0.002);
+                lightPlus.position.set(0.38, 0.53, 0.002);
                 lightPlus.userData.xrMenuAction = 'light-up';
                 menu.add(lightPlus);
                 this.xrMenuItems.push(lightPlus);
 
                 const items = [
+                    { label: 'Guia del taller', action: 'onboarding' },
                     { label: 'Musica', action: 'music' },
                     { label: 'Volver al inicio', action: 'home' },
                     { label: 'Cerrar menu', action: 'close' },
@@ -783,14 +1041,56 @@
 
                 items.forEach((item, index) => {
                     const button = new THREE.Mesh(
-                        new THREE.PlaneGeometry(0.96, 0.18),
-                        new THREE.MeshBasicMaterial({ map: this.createXRTextTexture(item.label, 512, 128, { size: 32 }), transparent: true, side: THREE.DoubleSide })
+                        new THREE.PlaneGeometry(0.96, 0.15),
+                        new THREE.MeshBasicMaterial({ map: this.createXRTextTexture(item.label, 512, 128, { size: 28 }), transparent: true, side: THREE.DoubleSide })
                     );
-                    button.position.y = -0.10 - index * 0.22;
+                    button.position.set(0, 0.28 - index * 0.17, 0.002);
                     button.userData.xrMenuAction = item.action;
                     menu.add(button);
                     this.xrMenuItems.push(button);
                 });
+
+                const toyPanel = new THREE.Group();
+                toyPanel.name = 'Panel de juguetes del taller';
+                toyPanel.position.set(1.18, 0.08, 0);
+                const toyBack = new THREE.Mesh(
+                    new THREE.PlaneGeometry(1.16, 1.30),
+                    new THREE.MeshBasicMaterial({ color: 0x464644, transparent: true, opacity: 0.92, side: THREE.DoubleSide })
+                );
+                toyBack.position.z = -0.015;
+                toyPanel.add(toyBack);
+                const toyLabel = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.98, 0.16),
+                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('Juguetes', 512, 128, { size: 34, background: 'rgba(76, 92, 45, 0.98)', border: 'rgba(113, 131, 72, 0.96)' }), transparent: true, side: THREE.DoubleSide })
+                );
+                toyLabel.position.set(0, 0.50, 0.002);
+                toyPanel.add(toyLabel);
+                const toyActions = [
+                    { label: 'Tren', action: 'spawn-train' },
+                    { label: 'Avion', action: 'spawn-plane' },
+                    { label: 'Barco', action: 'spawn-boat' },
+                    { label: 'Camion', action: 'spawn-truck' }
+                ];
+                toyActions.forEach((item, index) => {
+                    const button = new THREE.Mesh(
+                        new THREE.PlaneGeometry(0.46, 0.16),
+                        new THREE.MeshBasicMaterial({ map: this.createXRTextTexture(item.label, 256, 128, { size: 26 }), transparent: true, side: THREE.DoubleSide })
+                    );
+                    button.position.set(index % 2 === 0 ? -0.25 : 0.25, 0.27 - Math.floor(index / 2) * 0.21, 0.002);
+                    button.userData.xrMenuAction = item.action;
+                    toyPanel.add(button);
+                    this.xrMenuItems.push(button);
+                });
+                const clearButton = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.96, 0.16),
+                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('Despejar juguetes', 512, 128, { size: 28, background: 'rgba(217, 104, 104, 0.5)', border: 'rgba(217, 104, 104, 0.9)' }), transparent: true, side: THREE.DoubleSide })
+                );
+                clearButton.position.set(0, -0.29, 0.002);
+                clearButton.userData.xrMenuAction = 'clear-toys';
+                toyPanel.add(clearButton);
+                this.xrMenuItems.push(clearButton);
+                menu.add(toyPanel);
+                this.xrToyMenuPanel = toyPanel;
 
                 xb.core.scene.add(menu);
                 this.xrMenu = menu;
@@ -800,10 +1100,17 @@
                 this.createXRMenu();
                 this.xrMenuOpen = visible;
                 this.xrMenu.visible = visible;
+                this.updateXRToyMenuVisibility();
                 if (visible) {
                     this.syncXRLightLevelFromSlider();
                     this.positionXRMenuInFrontOfCamera();
-                    this.playSparkleSound();
+                    this.playClinkSound();
+                }
+            }
+
+            updateXRToyMenuVisibility() {
+                if (this.xrToyMenuPanel) {
+                    this.xrToyMenuPanel.visible = this.xrMenuOpen && this.currentSceneState === 'taller';
                 }
             }
 
@@ -830,7 +1137,8 @@
             handleXRMenuSelection(controller) {
                 if (!this.xrMenuOpen || !this.xrMenuItems.length) return false;
                 this.setRaycasterFromXRController(controller);
-                const hits = this.raycaster.intersectObjects(this.xrMenuItems, false);
+                const visibleItems = this.xrMenuItems.filter(item => item.visible && item.parent?.visible !== false);
+                const hits = this.raycaster.intersectObjects(visibleItems, false);
                 if (hits.length === 0) return false;
 
                 const action = hits[0].object.userData.xrMenuAction;
@@ -846,6 +1154,20 @@
                 } else if (action === 'music') {
                     this.toggleMusicBoxLoop();
                     this.playClinkSound();
+                } else if (action === 'onboarding') {
+                    this.openOnboarding();
+                } else if (action.startsWith('spawn-')) {
+                    if (this.currentSceneState !== 'taller') {
+                        this.playWobbleSound();
+                        return;
+                    }
+                    this.spawnToy(action.replace('spawn-', ''));
+                } else if (action === 'clear-toys') {
+                    if (this.currentSceneState !== 'taller') {
+                        this.playWobbleSound();
+                        return;
+                    }
+                    this.clearToys();
                 } else if (action === 'home') {
                     this.setXRMenuVisible(false);
                     if (this.currentSceneState === 'viaje') {
@@ -914,7 +1236,7 @@
                 const oldMap = this.xrLightValueMesh.material.map;
                 this.xrLightValueMesh.material.map = this.createXRTextTexture(`${Math.round(this.xrLightLevel)}%`, 256, 128, {
                     size: 38,
-                    background: 'rgba(69, 26, 3, 0.95)'
+                    background: 'rgba(76, 92, 45, 0.95)'
                 });
                 this.xrLightValueMesh.material.needsUpdate = true;
                 if (oldMap) oldMap.dispose();
@@ -925,6 +1247,7 @@
                 this.activeXRController = controller;
                 this.setRaycasterFromXRController(controller);
 
+                if (this.handleOnboardingSelection()) return;
                 if (this.handleXRMenuSelection(controller)) return;
 
                 if (this.currentSceneState === 'viaje') {
@@ -969,7 +1292,6 @@
 
                 if (this.currentSceneState === 'viaje') {
                     if (this.activeTravelToy === 'plane') {
-                        if (this.handleCloudGripStart(controller)) return;
                         this.tryGrabXRObjectFromCollection(controller, this.skyMovableObjects || [], 'sky');
                     } else if (this.activeTravelToy === 'boat') {
                         this.tryGrabXRObjectFromCollection(controller, this.boatMovableObjects || [], 'boat');
@@ -980,69 +1302,7 @@
             }
 
             onXRSqueezeEnd(controller) {
-                this.handleCloudGripEnd(controller);
                 if (this.activeXRController === controller) this.activeXRController = null;
-            }
-
-            handleCloudGripStart(controller) {
-                if (!controller || this.activeTravelToy !== 'plane' || !this.dispensedClouds?.length) return false;
-                const hits = this.raycaster.intersectObjects(this.dispensedClouds, true);
-                if (hits.length === 0) return false;
-
-                const cloud = this.findInteractiveParent(hits[0].object, this.dispensedClouds);
-                if (!cloud || cloud.userData.isPreview) return false;
-
-                const handedness = controller.userData.handedness || 'right';
-                this.cloudGripControllers[handedness] = { controller, cloud };
-
-                const otherHand = handedness === 'left' ? 'right' : 'left';
-                const other = this.cloudGripControllers[otherHand];
-                if (other?.cloud === cloud) {
-                    const p1 = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
-                    const p2 = new THREE.Vector3().setFromMatrixPosition(other.controller.matrixWorld);
-                    this.cloudScaleGesture = {
-                        cloud,
-                        left: handedness === 'left' ? controller : other.controller,
-                        right: handedness === 'right' ? controller : other.controller,
-                        startDistance: Math.max(0.05, p1.distanceTo(p2)),
-                        startScale: cloud.userData.targetScale || cloud.scale.x || 0.35
-                    };
-                } else {
-                    this.cycleDispensedCloudSize(cloud);
-                }
-
-                this.playSparkleSound();
-                return true;
-            }
-
-            handleCloudGripEnd(controller) {
-                if (!controller || !this.cloudGripControllers) return;
-                const handedness = controller.userData.handedness || 'right';
-                const active = this.cloudGripControllers[handedness];
-                this.cloudGripControllers[handedness] = null;
-                if (this.cloudScaleGesture && active?.cloud === this.cloudScaleGesture.cloud) {
-                    this.cloudScaleGesture = null;
-                }
-            }
-
-            cycleDispensedCloudSize(cloud) {
-                if (!cloud || cloud.userData.isPreview) return;
-                const sizes = [0.35, 0.75, 1.15];
-                const current = cloud.userData.sizeStep ?? 0;
-                const next = (current + 1) % sizes.length;
-                cloud.userData.sizeStep = next;
-                cloud.userData.targetScale = sizes[next];
-            }
-
-            updateCloudScaleGesture() {
-                const gesture = this.cloudScaleGesture;
-                if (!gesture?.cloud?.parent || !gesture.left || !gesture.right) return;
-                const p1 = new THREE.Vector3().setFromMatrixPosition(gesture.left.matrixWorld);
-                const p2 = new THREE.Vector3().setFromMatrixPosition(gesture.right.matrixWorld);
-                const distance = Math.max(0.05, p1.distanceTo(p2));
-                const target = THREE.MathUtils.clamp(gesture.startScale * (distance / gesture.startDistance), 0.28, 1.35);
-                gesture.cloud.userData.targetScale = target;
-                gesture.cloud.userData.sizeStep = target < 0.55 ? 0 : target < 0.95 ? 1 : 2;
             }
 
             tryGrabXRObjectFromCollection(controller, collection, sceneType) {
@@ -1052,7 +1312,7 @@
                 let closestDist = this.GRAB_DISTANCE * 1.35;
 
                 for (const obj of collection) {
-                    if (!obj || !obj.parent || obj.userData.type === 'dispensedCloud') continue;
+                    if (!obj || !obj.parent) continue;
                     if (obj === this.heldObjectLeft || obj === this.heldObjectRight) continue;
                     const objPos = new THREE.Vector3();
                     obj.getWorldPosition(objPos);
@@ -1070,7 +1330,7 @@
                     }
                 }
 
-                if (!target || target.userData.type === 'dispensedCloud') return false;
+                if (!target) return false;
                 return this.grabXRObject(controller, target, sceneType);
             }
 
@@ -1108,7 +1368,8 @@
                         const ray = controller.children.find(child => child.name === 'Meta Quest pointer ray');
                         if (!ray) return;
                         this.setRaycasterFromXRController(controller);
-                        const hoveringMenu = this.raycaster.intersectObjects(this.xrMenuItems, false).length > 0;
+                        const visibleItems = this.xrMenuItems.filter(item => item.visible && item.parent?.visible !== false);
+                        const hoveringMenu = this.raycaster.intersectObjects(visibleItems, false).length > 0;
                         ray.scale.z = hoveringMenu ? 1.35 : 2.4;
                         ray.material.opacity = hoveringMenu ? 1 : 0.78;
                     });
@@ -1151,6 +1412,20 @@
                         );
                     }
                 }
+            }
+
+            updateXRControllerMotion(delta) {
+                if (!this.isXRSessionActive || !delta) return;
+                this.xrControllers.forEach(controller => {
+                    const position = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
+                    const motion = controller.userData.motion || {
+                        position: position.clone(),
+                        velocity: new THREE.Vector3()
+                    };
+                    motion.velocity.copy(position).sub(motion.position).multiplyScalar(1 / delta).clampLength(0, 4.5);
+                    motion.position.copy(position);
+                    controller.userData.motion = motion;
+                });
             }
 
             releaseSelectedWorkshopToy() {
@@ -1212,10 +1487,25 @@
                 this.viajeGroup.add(this.viajeLightAmbient, this.viajeLightSun);
 
                 // Luz cálida de farol / camarote (fijada en el centro del barco)
-                this.boatCabinLight = new THREE.PointLight(0xff9933, 2.5, 6.0);
+                this.boatCabinLight = new THREE.PointLight(0xff9933, 3.0, 9.5);
                 this.boatCabinLight.position.set(0, 1.2, 0.0);
                 this.boatCabinLight.castShadow = true;
                 this.viajeGroup.add(this.boatCabinLight);
+            }
+
+            setXRPerformanceMode(enabled) {
+                if (this.xrPerformanceMode === enabled) return;
+                this.xrPerformanceMode = enabled;
+
+                [this.lampLight, this.candleLight, this.boatCabinLight].forEach(light => {
+                    if (light) light.castShadow = !enabled;
+                });
+
+                if (this.windowLight) {
+                    const mapSize = enabled ? 512 : 1024;
+                    this.windowLight.shadow.mapSize.set(mapSize, mapSize);
+                    this.windowLight.shadow.needsUpdate = true;
+                }
             }
 
             // CREACIÓN DE LA HABITACIÓN CERRADA LOW-POLY
@@ -1505,6 +1795,7 @@
                     this.registerWorkshopTableSurface();
                     // Escritorio listo — spawnear juguetes si los templates ya cargaron
                     this.trySpawnInitialToys();
+                    this.loadWorkshopOnboardingBook();
                 }, undefined, (err) => {
                     console.warn("Fallo cargando escritorio original, cargando respaldo...", err);
                     this.createFallbackDesk();
@@ -1541,6 +1832,7 @@
                 this.registerWorkshopTableSurface();
                 this.tallerGroup.add(fallbackDesk);
                 this.trySpawnInitialToys();
+                this.loadWorkshopOnboardingBook();
             }
 
             createWorkshopScenery() {
@@ -1630,6 +1922,95 @@
                 } else {
                     setTimeout(() => this._setupPedestalOnTable(), 100);
                 }
+            }
+
+            loadWorkshopOnboardingBook() {
+                if (!this.workshopTableSurface || this.onboardingBook || this.onboardingBookLoading) return;
+                this.onboardingBookLoading = true;
+                const loader = new GLTFLoader();
+                loader.load(modelUrls.onboardingBook, (gltf) => {
+                    this.createWorkshopOnboardingBook(gltf.scene);
+                }, undefined, () => {
+                    this.createWorkshopOnboardingBookFallback();
+                });
+            }
+
+            createWorkshopOnboardingBook(model) {
+                if (this.onboardingBook) return;
+
+                const book = new THREE.Group();
+                book.name = 'libro-de-bienvenida';
+                book.userData = { type: 'onboardingBook', uuid: THREE.MathUtils.generateUUID() };
+                model.traverse(child => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+
+                model.updateMatrixWorld(true);
+                const originalBox = new THREE.Box3().setFromObject(model);
+                const originalSize = originalBox.getSize(new THREE.Vector3());
+                const scaleFactor = 0.26 / Math.max(originalSize.x, originalSize.y, originalSize.z, 0.001);
+                model.scale.multiplyScalar(scaleFactor);
+                model.updateMatrixWorld(true);
+                const scaledBox = new THREE.Box3().setFromObject(model);
+                const center = scaledBox.getCenter(new THREE.Vector3());
+                model.position.set(-center.x, -scaledBox.min.y, -center.z);
+                book.add(model);
+                this.finishWorkshopOnboardingBook(book);
+            }
+
+            createWorkshopOnboardingBookFallback() {
+                if (this.onboardingBook) return;
+                const book = new THREE.Group();
+                book.name = 'libro-de-bienvenida-respaldo';
+                book.userData = { type: 'onboardingBook', uuid: THREE.MathUtils.generateUUID() };
+                const coverMat = new THREE.MeshStandardMaterial({ color: 0x4c5c2d, roughness: 0.62, emissive: 0x18200c, emissiveIntensity: 0.35 });
+                const paperMat = new THREE.MeshStandardMaterial({ color: 0xfff4f5, roughness: 0.9 });
+                const cover = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.035, 0.18), coverMat);
+                const pages = new THREE.Mesh(new THREE.BoxGeometry(0.21, 0.028, 0.15), paperMat);
+                pages.position.y = 0.025;
+                cover.castShadow = true;
+                pages.castShadow = true;
+                book.add(cover, pages);
+                this.finishWorkshopOnboardingBook(book);
+            }
+
+            finishWorkshopOnboardingBook(book) {
+                const tableTopY = this.workshopTableSurface?.topY ?? 0.88;
+                const halo = new THREE.Mesh(
+                    new THREE.CircleGeometry(0.19, 28),
+                    new THREE.MeshBasicMaterial({ color: 0x9fbf64, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide })
+                );
+                halo.rotation.x = -Math.PI / 2;
+                halo.position.y = 0.006;
+                const glow = new THREE.PointLight(0xa8c96f, 0.42, 1.15);
+                glow.position.y = 0.18;
+                book.add(halo, glow);
+                book.userData.halo = halo;
+                book.userData.glow = glow;
+                const lampX = this.lampGroup?.position.x ?? -0.55;
+                const lampZ = this.lampGroup?.position.z ?? -0.55;
+                book.position.set(lampX, tableTopY + 0.012, lampZ + 0.14);
+                book.rotation.y = Math.PI / 10;
+                this.tallerGroup.add(book);
+                this.objects.push(book);
+                this.registerPhysicsObject(book, 0.0);
+                this.onboardingBook = book;
+                this.onboardingBookLoading = false;
+            }
+
+            animateWorkshopOnboardingBook(elapsedTime) {
+                if (!this.onboardingBook?.parent || this.onboardingBook === this.selectedObject || this.onboardingBook === this.heldObjectLeft || this.onboardingBook === this.heldObjectRight) return;
+                const halo = this.onboardingBook.userData.halo;
+                const glow = this.onboardingBook.userData.glow;
+                const pulse = 0.5 + Math.sin(elapsedTime * 2.2) * 0.5;
+                if (halo) {
+                    halo.material.opacity = 0.11 + pulse * 0.12;
+                    halo.scale.setScalar(0.92 + pulse * 0.13);
+                }
+                if (glow) glow.intensity = 0.26 + pulse * 0.28;
             }
 
             createDustMotes() {
@@ -1936,14 +2317,16 @@
                 this._initialToysSpawned = false;
                 this.clearStaticSurfaces();
                 this.objects.forEach(obj => {
+                    if (obj === this.onboardingBook) return;
                     this.tallerGroup.remove(obj);
                     const thread = this.planeThreads.get(obj.userData.uuid);
                     if (thread) this.tallerGroup.remove(thread);
                 });
-                this.objects = [];
+                this.objects = this.onboardingBook?.parent ? [this.onboardingBook] : [];
                 this.planeThreads.clear();
                 this.unregisterPhysicsObjects();
                 this.registerWorkshopTableSurface();
+                if (this.onboardingBook?.parent) this.registerPhysicsObject(this.onboardingBook, 0.0);
                 this.playSweepSound();
             }
 
@@ -1952,9 +2335,12 @@
                 const tmpCenterA = new THREE.Vector3();
                 const tmpCenterB = new THREE.Vector3();
                 const REST_VELOCITY_THRESHOLD = 0.015;
+                const activePhysicsObjects = this.physicsObjects.filter(obj =>
+                    obj.mesh?.parent && this.isPhysicsMeshActive(obj.mesh)
+                );
+                if (!activePhysicsObjects.length) return;
 
-                this.physicsObjects.forEach(obj => {
-                    if (!obj.mesh || !obj.mesh.parent) return;
+                activePhysicsObjects.forEach(obj => {
                     if (
                         obj.mesh === this.selectedObject ||
                         obj.mesh === this.selectedBoatObject ||
@@ -2046,10 +2432,10 @@
                     }
                 });
 
-                for (let i = 0; i < this.physicsObjects.length; i++) {
-                    for (let j = i + 1; j < this.physicsObjects.length; j++) {
-                        const a = this.physicsObjects[i];
-                        const b = this.physicsObjects[j];
+                for (let i = 0; i < activePhysicsObjects.length; i++) {
+                    for (let j = i + 1; j < activePhysicsObjects.length; j++) {
+                        const a = activePhysicsObjects[i];
+                        const b = activePhysicsObjects[j];
                         if (!a.mesh?.parent || !b.mesh?.parent) continue;
 
                         // No resolver colisión entre objetos en niveles distintos
@@ -2133,9 +2519,17 @@
                 return false;
             }
 
+            isPhysicsMeshActive(mesh) {
+                for (let current = mesh; current; current = current.parent) {
+                    if (current.visible === false) return false;
+                }
+                return true;
+            }
+
             findDynamicSupportSurface(box, obj, tolerance = 0.12) {
                 for (const other of (this.physicsObjects || [])) {
                     if (!other || other === obj || !other.mesh?.parent) continue;
+                    if (!this.isPhysicsMeshActive(other.mesh)) continue;
                     if (
                         other.mesh === this.selectedObject ||
                         other.mesh === this.selectedBoatObject ||
@@ -2213,7 +2607,13 @@
             applyPhysicsReleaseImpulse(mesh) {
                 const phys = this.physicsObjects.find(p => p.mesh === mesh);
                 if (!phys) return;
-                phys.velocity.set(0, 0, 0);
+                const releaseVelocity = mesh.userData.releaseVelocity;
+                if (releaseVelocity?.isVector3) {
+                    phys.velocity.copy(releaseVelocity).clampLength(0, 4.5);
+                    delete mesh.userData.releaseVelocity;
+                } else {
+                    phys.velocity.set(0, 0, 0);
+                }
                 phys.resting = false;
             }
 
@@ -2231,11 +2631,11 @@
             onPreviewKeyDown(event) {
                 if (this.isXRSessionActive || this.isTypingInUI(event) || event.repeat) return;
                 const key = event.key.toLowerCase();
-                const handled = ['1', 'w', 'a', 's', 'd', 'x', 'arrowdown', 'arrowup', 'j', 'i', 'k', 'l'].includes(key);
+                const handled = ['z', 'w', 'a', 's', 'd', 'x', 'arrowdown', 'arrowup', 'j', 'i', 'k', 'l'].includes(key);
                 if (!handled) return;
                 event.preventDefault();
 
-                if (key === '1') {
+                if (key === 'z') {
                     this.togglePreviewSpectatorMode();
                     return;
                 }
@@ -2394,7 +2794,7 @@
             }
 
             grabXRObject(controller, object, sceneType = 'taller') {
-                if (!controller || !object || object.userData.type === 'dispensedCloud') return false;
+                if (!controller || !object) return false;
                 const handedness = controller.userData.handedness;
                 if (object === this.heldObjectLeft || object === this.heldObjectRight) return false;
 
@@ -2416,6 +2816,7 @@
                 if (handedness === 'left') this.heldObjectLeft = object;
                 else this.heldObjectRight = object;
 
+                if (object.userData.type === 'onboardingBook') this.openOnboarding();
                 this.playWobbleSound();
                 return true;
             }
@@ -2425,6 +2826,7 @@
                 const handedness = controller.userData.handedness;
                 const sceneType = object.userData.holdSceneType || 'taller';
                 const returnParent = object.userData.holdReturnParent || this.tallerGroup;
+                object.userData.releaseVelocity = controller.userData.motion?.velocity?.clone() || new THREE.Vector3();
 
                 if (returnParent?.attach) {
                     returnParent.attach(object);
@@ -2464,6 +2866,8 @@
                 this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
                 this.raycaster.setFromCamera(this.mouse, xb.core.camera);
+
+                if (this.handleOnboardingSelection()) return;
 
                 if (this.currentSceneState === 'viaje') {
                     if (this.activeTravelToy === 'plane' && this.selectedSkyObject) {
@@ -2531,6 +2935,7 @@
                         }
 
                         this.movePreviewHeldObjectToCamera(this.selectedObject);
+                        if (this.selectedObject.userData.type === 'onboardingBook') this.openOnboarding();
                         this.playWobbleSound();
                     }
                 }
@@ -2621,8 +3026,10 @@
                     this.chestGroup.userData.busy = true;
                     this.chestGroup.userData.open = true;
                     this.chestGroup.userData.lidTargetRotX = -Math.PI * 0.62;
+                    this.setBoatChestGlow(true);
                     this.spawnChestItems();
-                    this.playSparkleSound();
+                    this.playBoatChestOpenSound();
+                    setTimeout(() => this.closeBoatChest(), 10000);
                     return true;
                 }
                 if (!allowObjectGrab || !this.boatMovableObjects.length) return false;
@@ -2660,7 +3067,7 @@
                     this.selectedBoatObject.position.set(
                         Math.max(-1.15, Math.min(1.15, this.intersectionPoint.x + this.offset.x)),
                         targetY,
-                        Math.max(-0.95, Math.min(0.9, this.intersectionPoint.z + this.offset.z))
+                        Math.max(-0.95, Math.min(1.9, this.intersectionPoint.z + this.offset.z))
                     );
                 }
             }
@@ -2683,8 +3090,15 @@
                     }
                 }
 
-                if ((obj?.userData.type === 'boatItem' || obj?.userData.type === 'boatCandle') && this.isBoatOverboardThrowZone(obj.position)) {
+                const isThrowable = obj?.userData.movable && !obj.userData.installed && obj.userData.type !== 'boatWheel';
+                if (isThrowable && this.isBoatOverboardThrowZone(obj.position)) {
                     this.throwBoatObjectOverboard(obj);
+                    this.selectedBoatObject = null;
+                    return;
+                }
+
+                if (isThrowable && this.isBoatYellowOverboardZone(obj.position)) {
+                    this.slideBoatObjectIntoSea(obj);
                     this.selectedBoatObject = null;
                     return;
                 }
@@ -2695,7 +3109,7 @@
             }
 
             isBoatOverboardThrowZone(pos) {
-                const nearSideWall = Math.abs(pos.x) >= 0.78;
+                const nearSideWall = pos.x <= -1.05 || pos.x >= 0.95;
                 if (!nearSideWall) return false;
 
                 const zMax = 1.65;
@@ -2713,6 +3127,10 @@
                 return allowedColumns.includes(columnFromYellow) && blockFromTop >= 1 && blockFromTop <= 3;
             }
 
+            isBoatYellowOverboardZone(pos) {
+                return pos.z >= 1.55 && Math.abs(pos.x) <= 1.35 && pos.y >= 0.02;
+            }
+
             throwBoatObjectOverboard(obj) {
                 if (!obj || !obj.parent) return;
 
@@ -2721,8 +3139,14 @@
 
                 const start = obj.position.clone();
                 const sideSign = Math.sign(start.x) || 1;
-                const end = new THREE.Vector3(sideSign * 1.9, -0.75, start.z + 0.18);
-                const peak = Math.max(start.y + 0.75, 1.25);
+                const throwVelocity = obj.userData.releaseVelocity || new THREE.Vector3();
+                const end = new THREE.Vector3(
+                    sideSign * 1.9 + throwVelocity.x * 0.12,
+                    -0.75,
+                    start.z + 0.18 + THREE.MathUtils.clamp(throwVelocity.z * 0.12, -0.24, 0.24)
+                );
+                const peak = Math.max(start.y + 0.75 + Math.max(0, throwVelocity.y) * 0.16, 1.25);
+                delete obj.userData.releaseVelocity;
                 const duration = 720;
                 const startTime = performance.now();
 
@@ -2758,6 +3182,39 @@
                 };
 
                 animateThrow();
+                this.playWobbleSound();
+            }
+
+            slideBoatObjectIntoSea(obj) {
+                if (!obj?.parent) return;
+                this.unregisterPhysicsObject(obj);
+                obj.userData.overboard = true;
+
+                const start = obj.position.clone();
+                const sideSign = Math.sign(start.x) || 1;
+                const end = new THREE.Vector3(sideSign * 1.72, -0.65, 2.75);
+                const duration = 880;
+                const startTime = performance.now();
+
+                const animateSlide = () => {
+                    if (!obj.parent) return;
+                    const t = Math.min((performance.now() - startTime) / duration, 1);
+                    const eased = t * t * (3 - 2 * t);
+                    obj.position.lerpVectors(start, end, eased);
+                    obj.position.y += Math.sin(t * Math.PI) * 0.12;
+                    obj.rotation.z += sideSign * 0.025;
+
+                    if (t < 1) {
+                        requestAnimationFrame(animateSlide);
+                        return;
+                    }
+
+                    obj.parent?.remove(obj);
+                    this.boatInteractiveObjects = this.boatInteractiveObjects.filter(item => item !== obj);
+                    this.boatMovableObjects = this.boatMovableObjects.filter(item => item !== obj);
+                };
+
+                animateSlide();
                 this.playWobbleSound();
             }
             getToyOnPedestal() {
@@ -2804,10 +3261,33 @@
                 }
             }
 
+            disposeSceneResources(root) {
+                const geometries = new Set();
+                const materials = new Set();
+                const textures = new Set();
+
+                root.traverse(node => {
+                    if (node.geometry) geometries.add(node.geometry);
+                    const nodeMaterials = Array.isArray(node.material) ? node.material : [node.material];
+                    nodeMaterials.filter(Boolean).forEach(material => {
+                        materials.add(material);
+                        Object.values(material).forEach(value => {
+                            if (value?.isTexture) textures.add(value);
+                        });
+                    });
+                    if (node.skeleton?.dispose) node.skeleton.dispose();
+                });
+
+                geometries.forEach(geometry => geometry.dispose());
+                materials.forEach(material => material.dispose());
+                textures.forEach(texture => texture.dispose());
+            }
+
             clearTravelScene() {
                 const keep = new Set([this.viajeLightAmbient, this.viajeLightSun, this.boatCabinLight]);
                 [...this.viajeGroup.children].forEach(child => {
                     if (!keep.has(child)) {
+                        this.disposeSceneResources(child);
                         this.viajeGroup.remove(child);
                     }
                 });
@@ -2853,6 +3333,7 @@
                 this.trainJustBoarded = false;
                 this.trainInnerLights = [];
                 this.lastTrainSteamTime = 0;
+                this.trainFireflies = null;
                 this.truckSceneRoot = null;
                 this.truckInteractiveObjects = [];
                 this.truckMovableObjects = [];
@@ -2877,11 +3358,10 @@
                 this.skyMovableObjects = [];
                 this.selectedSkyObject = null;
                 this.dispensedClouds = [];
-                this.cloudGripControllers = { left: null, right: null };
-                this.cloudScaleGesture = null;
                 this.coinsCollected = 0;
                 this.skyFloorModel = null;
                 this.skySceneFloorY = 0.0;
+                this.planeSceneGroup = null;
                 if (this.birds) {
                     this.birds.forEach(b => this.viajeGroup.remove(b));
                     this.birds = [];
@@ -2891,7 +3371,9 @@
             // --- GESTION DE TRANSICION Y CARGA DE ESCENAS POR JUGUETE ---
             triggerTravelTransition(toyType = 'boat') {
                 const config = sceneConfigs[toyType] || sceneConfigs.boat;
+                this.stopSceneAmbience();
                 this.currentSceneState = 'viaje';
+                this.updateXRToyMenuVisibility();
                 this.transitionTriggered = true;
                 this.activeTravelToy = toyType;
                 this.activeSceneConfig = config;
@@ -3030,6 +3512,8 @@
                 const group = new THREE.Group();
                 group.name = 'exit-pillar';
                 group.userData = { type: 'exitPillar' };
+                const signY = this.activeTravelToy === 'plane' ? 1.55 : 1.18;
+                const pillarHeight = signY - 0.16;
 
                 // Madera oscura para el pilar
                 const woodDark = new THREE.MeshStandardMaterial({ color: 0x3b2410, roughness: 0.85, metalness: 0.0 });
@@ -3051,8 +3535,8 @@
                 });
 
                 // Pilar octogonal de madera
-                const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.10, 1.1, 8), woodDark);
-                pillar.position.y = 0.55;
+                const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.10, pillarHeight, 8), woodDark);
+                pillar.position.y = pillarHeight / 2;
                 pillar.castShadow = true;
                 group.add(pillar);
 
@@ -3064,20 +3548,20 @@
 
                 // Panel de madera (fondo del cartel)
                 const panel = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.20, 0.05), woodPanel);
-                panel.position.y = 1.18;
+                panel.position.y = signY;
                 panel.castShadow = true;
                 group.add(panel);
 
                 // Marco alrededor del cartel (4 listones delgados)
                 const frameH = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.025, 0.055), woodFrame);
                 const frameHb = frameH.clone();
-                frameH.position.set(0, 1.18 + 0.11, 0);
-                frameHb.position.set(0, 1.18 - 0.11, 0);
+                frameH.position.set(0, signY + 0.11, 0);
+                frameHb.position.set(0, signY - 0.11, 0);
                 group.add(frameH, frameHb);
                 const frameV = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.22, 0.055), woodFrame);
                 const frameVr = frameV.clone();
-                frameV.position.set(-0.30, 1.18, 0);
-                frameVr.position.set(0.30, 1.18, 0);
+                frameV.position.set(-0.30, signY, 0);
+                frameVr.position.set(0.30, signY, 0);
                 group.add(frameV, frameVr);
 
                 // Texto SALIDA con fuente Inter, estilo tallado (letras oscuras sobre madera)
@@ -3086,7 +3570,7 @@
                     new THREE.PlaneGeometry(0.50, 0.16),
                     new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide })
                 );
-                textPanel.position.set(0, 1.18, 0.028);
+                textPanel.position.set(0, signY, 0.028);
                 group.add(textPanel);
 
                 const glowMat = new THREE.MeshBasicMaterial({
@@ -3098,12 +3582,12 @@
                     side: THREE.DoubleSide
                 });
                 const glowPanel = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.20), glowMat);
-                glowPanel.position.set(0, 1.18, 0.031);
+                glowPanel.position.set(0, signY, 0.031);
                 group.add(glowPanel);
 
                 // Luz cálida tenue (vela / lámpara de madera)
                 const light = new THREE.PointLight(0xffd778, 0.75, 1.7);
-                light.position.set(0, 1.35, 0.25);
+                light.position.set(0, signY + 0.17, 0.25);
                 group.add(light);
 
                 group.userData.exitSign = {
@@ -3236,7 +3720,7 @@
                 } else if (this.activeTravelToy === 'plane') {
                     this.leverModel.position.set(-1.55, 0.0, -0.2);
                     this.leverModel.rotation.y = Math.PI / 6;
-                    this.viajeGroup.add(this.leverModel);
+                    (this.planeSceneGroup || this.viajeGroup).add(this.leverModel);
                 } else {
                     this.leverModel.position.set(-1.15, 0.0, -0.9);
                     this.viajeGroup.add(this.leverModel);
@@ -3343,14 +3827,14 @@
                     center: new THREE.Vector3(0, 0, 0)
                 }));
 
-                const platform = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.18, 6.8), platformMat);
-                platform.position.set(0, 0.09, 0);
+                const platform = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.04, 6.8), platformMat);
+                platform.position.set(0, 0, 0);
                 platform.receiveShadow = true;
                 platform.castShadow = true;
                 this.trainSceneRoot.add(platform);
 
                 const edge = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.16, 6.8), new THREE.MeshStandardMaterial({ color: 0xcaa75b, roughness: 0.72 }));
-                edge.position.set(1.31, 0.26, 0);
+                edge.position.set(1.31, 0.08, 0);
                 edge.castShadow = true;
                 this.trainSceneRoot.add(edge);
                 const TRACK_RADIUS = 6.5;
@@ -3389,13 +3873,16 @@
                     });
                 }
 
+                this.createTrainPerimeterTrees();
+                this.createTrainFireflies();
+
                 const lampPost = new THREE.Group();
                 const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.2, 12), railMat);
                 post.position.y = 1.1;
                 const hook = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.05), railMat);
                 hook.position.set(0.25, 2.15, 0);
                 lampPost.add(post, hook);
-                lampPost.position.set(-1.05, 0.18, 1.85);
+                lampPost.position.set(-1.05, 0, 1.85);
                 this.trainSceneRoot.add(lampPost);
 
                 this.trainLantern = this.createTrainLantern();
@@ -3406,19 +3893,25 @@
 
                 const lanternCopy = this.createTrainLantern();
                 lanternCopy.scale.setScalar(2);
-                lanternCopy.position.set(-0.35, 0.18, 0.85);
+                lanternCopy.position.set(-0.35, 0, 0.85);
                 lanternCopy.userData.type = 'trainLanternCopy';
                 lanternCopy.userData.movable = true;
                 this.addTrainObject(lanternCopy, true);
 
+                const whistleTable = this.createTrainWhistleTable();
+                whistleTable.position.set(0, 0, 2.5);
+                this.trainSceneRoot.add(whistleTable);
+                this.registerStaticSurface(-0.72, 0.72, 2.16, 2.84, 0.75);
+
                 const whistle = this.createTrainWhistle();
                 whistle.scale.setScalar(2);
-                whistle.position.set(0.4, 0.34, 1.65);
+                whistle.position.set(0.95, 0.81, 2.5);
+                whistle.rotation.y = -Math.PI / 2;
                 this.addTrainObject(whistle, false);
 
                 this.trainSignal = this.createTrainSignal();
                 this.trainSignal.scale.setScalar(2);
-                this.trainSignal.position.set(1.15, 0.18, -2.15);
+                this.trainSignal.position.set(1.15, 0, -2.15);
                 this.addTrainObject(this.trainSignal, false);
                 this.updateTrainSignalLights();
 
@@ -3440,7 +3933,8 @@
                     this.addTrainObject(coal, true);
                 });
                 this.trainBoardSwitch = this.createTrainBoardSwitch();
-                this.trainBoardSwitch.position.set(0.95, 0.18, 0.95);
+                this.trainBoardSwitch.position.set(0.95, 0, 0.95);
+                this.trainBoardSwitch.rotation.y = -Math.PI / 2;
                 this.addTrainObject(this.trainBoardSwitch, false);
                 this.trainExitButton = this.createTrainExitButton();
                 this.trainExitButton.position.set(0.0, 0.85, 0.55);
@@ -3631,6 +4125,7 @@
                 this.trainSignalState = 'green';
                 this.updateTrainSignalLights();
                 this.playLeverClickSound();
+                this.startTrainTravelMusic();
             }
 
             exitTrainToPlatform() {
@@ -3645,15 +4140,150 @@
                 this.trainSignalState = 'red';
                 this.updateTrainSignalLights();
                 this.playLeverClickSound();
+                this.stopTrainTravelMusic();
             }
             addTrainObject(object, movable = false) {
                 this.trainInteractiveObjects.push(object);
                 if (movable) {
                     this.trainMovableObjects.push(object);
-                    this.registerPhysicsObject(object, 0.09);
+                    this.registerPhysicsObject(object, 0.02);
                 }
                 if (this.trainSceneRoot) this.trainSceneRoot.add(object);
                 else this.viajeGroup.add(object);
+            }
+
+            createTrainPerimeterTrees() {
+                if (!this.trainSceneRoot) return;
+
+                const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4b2a17, roughness: 0.92, flatShading: true });
+                const foliageMats = [
+                    new THREE.MeshStandardMaterial({ color: 0x1c5a3a, roughness: 0.9, flatShading: true }),
+                    new THREE.MeshStandardMaterial({ color: 0x246b43, roughness: 0.9, flatShading: true }),
+                    new THREE.MeshStandardMaterial({ color: 0x2d7a4b, roughness: 0.9, flatShading: true })
+                ];
+                const perimeter = [
+                    [-9, -8], [-9, -4], [-9, 0], [-9, 4], [-9, 8],
+                    [9, -8], [9, -4], [9, 0], [9, 4], [9, 8],
+                    [-4, -9], [0, -9], [4, -9],
+                    [-4, 9], [0, 9], [4, 9]
+                ];
+
+                perimeter.forEach(([x, z], index) => {
+                    const tree = new THREE.Group();
+                    tree.name = `arbol-perimetral-${index + 1}`;
+                    tree.userData.height = 3;
+
+                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.17, 0.85, 7), trunkMat);
+                    trunk.position.y = 0.425;
+                    tree.add(trunk);
+
+                    [
+                        [0.76, 1.25, 0.95, 0],
+                        [0.58, 1.2, 1.55, 1],
+                        [0.40, 1.5, 2.25, 2]
+                    ].forEach(([radius, height, y, materialIndex]) => {
+                        const canopy = new THREE.Mesh(
+                            new THREE.ConeGeometry(radius, height, 8),
+                            foliageMats[materialIndex]
+                        );
+                        canopy.position.y = y;
+                        canopy.rotation.y = (index % 3) * 0.18;
+                        tree.add(canopy);
+                    });
+
+                    tree.position.set(x, 0, z);
+                    tree.rotation.y = (index * 0.73) % (Math.PI * 2);
+                    tree.traverse(child => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    this.trainSceneRoot.add(tree);
+                });
+            }
+
+            createTrainFireflies() {
+                if (!this.trainSceneRoot || this.trainFireflies) return;
+
+                const count = 48;
+                const positions = new Float32Array(count * 3);
+                const basePositions = new Float32Array(count * 3);
+                const phases = new Float32Array(count);
+                const speeds = new Float32Array(count);
+
+                for (let index = 0; index < count; index += 1) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = 3.0 + Math.random() * 4.8;
+                    const offset = index * 3;
+                    basePositions[offset] = Math.cos(angle) * radius;
+                    basePositions[offset + 1] = 0.55 + Math.random() * 1.55;
+                    basePositions[offset + 2] = Math.sin(angle) * radius;
+                    positions[offset] = basePositions[offset];
+                    positions[offset + 1] = basePositions[offset + 1];
+                    positions[offset + 2] = basePositions[offset + 2];
+                    phases[index] = Math.random() * Math.PI * 2;
+                    speeds[index] = 0.45 + Math.random() * 0.75;
+                }
+
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const material = new THREE.PointsMaterial({
+                    color: 0xffef8a,
+                    size: 0.055,
+                    sizeAttenuation: true,
+                    transparent: true,
+                    opacity: 0.9,
+                    depthWrite: false,
+                    blending: THREE.AdditiveBlending
+                });
+                this.trainFireflies = new THREE.Points(geometry, material);
+                this.trainFireflies.name = 'luciernagas-tren';
+                this.trainFireflies.userData = { basePositions, phases, speeds };
+                this.trainSceneRoot.add(this.trainFireflies);
+            }
+
+            animateTrainFireflies(elapsedTime) {
+                if (!this.trainFireflies) return;
+                const positions = this.trainFireflies.geometry.attributes.position.array;
+                const { basePositions, phases, speeds } = this.trainFireflies.userData;
+                for (let index = 0; index < phases.length; index += 1) {
+                    const offset = index * 3;
+                    const phase = elapsedTime * speeds[index] + phases[index];
+                    positions[offset] = basePositions[offset] + Math.sin(phase) * 0.18;
+                    positions[offset + 1] = basePositions[offset + 1] + Math.sin(phase * 1.7) * 0.12;
+                    positions[offset + 2] = basePositions[offset + 2] + Math.cos(phase * 0.8) * 0.15;
+                }
+                this.trainFireflies.geometry.attributes.position.needsUpdate = true;
+                this.trainFireflies.material.opacity = 0.58 + Math.sin(elapsedTime * 2.2) * 0.18;
+            }
+
+            createTrainWhistleTable() {
+                const table = new THREE.Group();
+                table.name = 'mesa-silbato-anden';
+                table.userData = { type: 'trainWhistleTable', height: 0.75 };
+
+                const woodTop = new THREE.MeshStandardMaterial({ color: 0x70401f, roughness: 0.82, flatShading: true });
+                const woodLeg = new THREE.MeshStandardMaterial({ color: 0x3b2113, roughness: 0.9, flatShading: true });
+                const top = new THREE.Mesh(new THREE.BoxGeometry(1.44, 0.06, 0.68), woodTop);
+                top.position.y = 0.72;
+                table.add(top);
+
+                [-0.58, 0.58].forEach(x => {
+                    [-0.24, 0.24].forEach(z => {
+                        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.69, 0.09), woodLeg);
+                        leg.position.set(x, 0.345, z);
+                        table.add(leg);
+                    });
+                });
+
+                table.traverse(child => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                return table;
             }
 
             createTrainLantern() {
@@ -3923,6 +4553,8 @@
             }
 
             animateTrainScene(elapsedTime) {
+                this.animateTrainFireflies(elapsedTime);
+
                 // Humo SOLO cuando el tren se mueve
                 if (this.trainBoarded && elapsedTime - this.lastTrainSteamTime > 0.28) {
                     this.lastTrainSteamTime = elapsedTime;
@@ -4043,6 +4675,14 @@
 
             buildProceduralSkyScene() {
                 const skyGroup = new THREE.Group();
+                skyGroup.name = 'escenario-avion';
+                skyGroup.position.y = this.planeSceneYOffset;
+                this.planeSceneGroup = skyGroup;
+
+                if (this.activeTravelToy === 'plane' && this.leverModel) {
+                    this.planeSceneGroup.add(this.leverModel);
+                    this.positionLeverOnPlane();
+                }
 
                 const skyDome = new THREE.Mesh(
                     new THREE.SphereGeometry(15, 48, 24),
@@ -4263,9 +4903,9 @@
                     helperGroup.add(marker);
                 };
 
-                // Rojo (izquierda, eje X): alejado un poco más del centro
-                makeWall('left', new THREE.Vector3(0.03, 1.2, 3.9), new THREE.Vector3(-1.40, 0.6, -0.30), 0xff6b6b);
-                makeWall('right', new THREE.Vector3(0.03, 1.2, 3.9), new THREE.Vector3(1.20, 0.6, -0.30), 0x5dade2);
+                // Rojo 0.05 m hacia el centro y azul 0.05 m hacia afuera.
+                makeWall('left', new THREE.Vector3(0.03, 1.2, 3.9), new THREE.Vector3(-1.35, 0.6, -0.30), 0xff6b6b);
+                makeWall('right', new THREE.Vector3(0.03, 1.2, 3.9), new THREE.Vector3(1.25, 0.6, -0.30), 0x5dade2);
 
                 const makeSideGrid = (label, x, color) => {
                     const zMin = -2.25;
@@ -4288,10 +4928,11 @@
                     grid.name = `boat-${label}-wall-grid`;
                     grid.renderOrder = 25;
                     helperGroup.add(grid);
+
                 };
 
-                makeSideGrid('left', -1.38, 0xff6b6b);
-                makeSideGrid('right', 1.18, 0x5dade2);
+                makeSideGrid('left', -1.33, 0xff6b6b);
+                makeSideGrid('right', 1.23, 0x5dade2);
                 // Verde (pared trasera, eje Z): alejada del centro + un poco más, y expandida en X
                 makeWall('back', new THREE.Vector3(2.9, 1.2, 0.03), new THREE.Vector3(-0.15, 0.6, -1.80), 0x58d68d);
                 // Amarillo (pared frontal, eje Z): alejada del centro hacia adelante, expandida en X
@@ -4449,7 +5090,7 @@
                 flame.scale.y = 1.6;
                 candle.add(flame);
 
-                const light = new THREE.PointLight(0xff9b35, 0.9, 1.8);
+                const light = new THREE.PointLight(0xff9b35, 1.15, 2.7);
                 light.position.y = 0.24;
                 candle.add(light);
                 return candle;
@@ -4488,7 +5129,8 @@
                     lid: null,
                     lidTargetRotX: 0,
                     lidCurrentRotX: 0,
-                    busy: false
+                    busy: false,
+                    glowLight: null
                 };
                 this.boatSceneRoot.add(chestGroup);
                 this.boatInteractiveObjects.push(chestGroup);
@@ -4527,6 +5169,11 @@
                 innerFloor.rotation.x = -Math.PI / 2;
                 innerFloor.position.y = H * 0.18;
                 chestGroup.add(innerFloor);
+
+                const glowLight = new THREE.PointLight(0xffd34d, 0, 2.2);
+                glowLight.position.set(0, H * 0.72, 0.08);
+                chestGroup.add(glowLight);
+                chestGroup.userData.glowLight = glowLight;
 
                 // Listones de madera oscura verticales en las esquinas
                 const cornerGeo = new THREE.BoxGeometry(0.035, H + 0.005, 0.035);
@@ -4581,6 +5228,21 @@
                 lidPivot.add(lidBand);
 
                 chestGroup.userData.lid = lidPivot;
+            }
+
+            setBoatChestGlow(active) {
+                const glowLight = this.chestGroup?.userData?.glowLight;
+                if (!glowLight) return;
+                glowLight.intensity = active ? 1.5 : 0;
+            }
+
+            closeBoatChest() {
+                if (!this.chestGroup?.userData) return;
+                this.chestGroup.userData.lidTargetRotX = 0;
+                this.chestGroup.userData.open = false;
+                this.chestGroup.userData.busy = false;
+                this.setBoatChestGlow(false);
+                this.playClinkSound();
             }
 
             createChestDimensionGuide(size, color = 0xffffff) {
@@ -4650,24 +5312,10 @@
                                     phys.velocity.set((endPos.x - startPos.x) * 1.5, 0.05, 0.22);
                                     phys.resting = false;
                                 }
-                                // Cerrar la tapa una vez que el objeto salió
-                                setTimeout(() => {
-                                    if (this.chestGroup?.userData) {
-                                        this.chestGroup.userData.lidTargetRotX = 0;
-                                        this.chestGroup.userData.open = false;
-                                        this.chestGroup.userData.busy = false;
-                                        this.playClinkSound();
-                                    }
-                                }, 600);
                             }
                         }, 16);
                     }, undefined, () => {
-                        // Si falla la carga, igual cerramos la tapa para no quedar trabados
-                        if (this.chestGroup?.userData) {
-                            this.chestGroup.userData.lidTargetRotX = 0;
-                            this.chestGroup.userData.open = false;
-                            this.chestGroup.userData.busy = false;
-                        }
+                        // El cierre temporizado se conserva incluso si el modelo no carga.
                     });
                 }, 450);
             }
@@ -4768,7 +5416,7 @@
                 machine.position.set(0.10, 0.52, -0.97);
                 machine.userData = { type: 'cloudMachine' };
                 this.cloudMachine = machine;
-                this.viajeGroup.add(machine);
+                (this.planeSceneGroup || this.viajeGroup).add(machine);
             }
 
             createSkyCoinTray() {
@@ -4803,13 +5451,13 @@
                 tray.add(rightRim);
 
                 const machinePos = this.cloudMachine?.position || new THREE.Vector3(0.10, 0.52, -0.97);
-                // Bandeja 0.1 hacia la pared roja (-X) desde la maquina, y delante de la boca.
-                tray.position.set(machinePos.x - 0.10, 0, machinePos.z + 0.58);
+                // Bandeja al frente de la maquina, 0.2 m mas cerca de la pared amarilla (+Z).
+                tray.position.set(machinePos.x - 0.10, 0.5, machinePos.z + 0.78);
                 tray.userData = { type: 'skyCoinTray' };
                 this.skyCoinTray = tray;
-                this.viajeGroup.add(tray);
+                (this.planeSceneGroup || this.viajeGroup).add(tray);
 
-                const topY = tray.position.y + floor.position.y + 0.045 / 2;
+                const topY = tray.position.y + floor.position.y + 0.045 / 2 + (this.planeSceneGroup?.position.y || 0);
                 this.registerStaticSurface(
                     tray.position.x - 0.38,
                     tray.position.x + 0.38,
@@ -4855,8 +5503,8 @@
                     coin.userData.phase = index * Math.PI * 0.4;
                     this.skyCoins.push(coin);
                     this.skyMovableObjects.push(coin);
-                    this.viajeGroup.add(coin);
-                    this.registerPhysicsObject(coin, 1.05);
+                    (this.planeSceneGroup || this.viajeGroup).add(coin);
+                    this.registerPhysicsObject(coin, 1.05 + (this.planeSceneGroup?.position.y || 0));
                 });
             }
 
@@ -4875,16 +5523,17 @@
             dispenseCoinFromMachine() {
                 if (!this.cloudMachine) return;
                 const coin = this.createSkyCoin();
+                const trayDropPoint = this.skyCoinTray?.position || this.cloudMachine.position;
                 coin.position.set(
-                    this.cloudMachine.position.x,
+                    trayDropPoint.x,
                     this.cloudMachine.position.y + 0.65,
-                    this.cloudMachine.position.z + 0.52
+                    trayDropPoint.z
                 );
                 coin.userData.type = 'skyCoinPhysics';
                 this.skyCoins.push(coin);
                 this.skyMovableObjects.push(coin);
-                this.viajeGroup.add(coin);
-                this.registerPhysicsObject(coin, 0.0);
+                (this.planeSceneGroup || this.viajeGroup).add(coin);
+                this.registerPhysicsObject(coin, this.planeSceneGroup?.position.y || 0.0);
                 const phys = this.physicsObjects.find(p => p.mesh === coin);
                 if (phys) {
                     phys.velocity.set((Math.random() - 0.5) * 0.05, 0, 0.02);
@@ -4955,7 +5604,7 @@
                 if (this.coinSlot) this.coinSlot.updateWorldMatrix(true, false);
                 const slotWorld = this.coinSlot ? this.coinSlot.getWorldPosition(new THREE.Vector3()) : null;
 
-                if (slotWorld && obj.position.distanceTo(slotWorld) < 0.9) {
+                if (obj.userData.type === 'skyCoinPhysics' && slotWorld && obj.position.distanceTo(slotWorld) < 0.9) {
                     const startPos = obj.position.clone();
                     const endPos = slotWorld.clone();
                     this.unregisterPhysicsObject(obj);
@@ -4970,7 +5619,7 @@
                         obj.rotation.z += 0.18;
                         if (t >= 1) {
                             clearInterval(fly);
-                            this.viajeGroup.remove(obj);
+                            obj.parent?.remove(obj);
                             this.skyCoins = this.skyCoins.filter(c => c !== obj);
                             this.skyMovableObjects = this.skyMovableObjects.filter(c => c !== obj);
                             this.dispenseCloud();
@@ -5006,26 +5655,32 @@
                 const cloud = this.createSingleFallbackCloud();
                 // Sale desde la boca del dispenser
                 const machinePos = this.cloudMachine ? this.cloudMachine.position.clone() : new THREE.Vector3(0.10, 0.52, -0.97);
-                cloud.position.set(machinePos.x, machinePos.y + 0.65, machinePos.z + 0.62);
-                cloud.scale.setScalar(0.35);
+                const cloudDropPoint = this.skyCoinTray?.position || new THREE.Vector3(machinePos.x, 0, machinePos.z + 0.62);
+                const cloudSizes = [0.35, 0.75, 1.15];
+                const sizeStep = Math.floor(Math.random() * cloudSizes.length);
+                const initialScale = cloudSizes[sizeStep];
+                cloud.position.set(cloudDropPoint.x, machinePos.y + 0.65, cloudDropPoint.z);
+                cloud.scale.setScalar(initialScale);
                 cloud.userData = {
                     type: 'dispensedCloud',
                     age: 0,
                     phase: Math.random() * Math.PI * 2,
                     flyingAway: false,
+                    stackable: true,
                     // 1 minuto en el piso (a ~60fps) antes de irse volando
                     groundedFrames: 3600,
-                    targetScale: 0.35,
-                    sizeStep: 0
+                    targetScale: initialScale,
+                    sizeStep
                 };
                 this.dispensedClouds.push(cloud);
-                this.viajeGroup.add(cloud);
+                this.skyMovableObjects.push(cloud);
+                (this.planeSceneGroup || this.viajeGroup).add(cloud);
 
                 // Cae al piso real del avion-escenario.
-                this.registerPhysicsObject(cloud, this.skySceneFloorY || 0.0);
+                this.registerPhysicsObject(cloud, this.skySceneFloorY || (this.planeSceneGroup?.position.y || 0.0));
                 const phys = this.physicsObjects.find(p => p.mesh === cloud);
                 if (phys) {
-                    phys.velocity.set((Math.random() - 0.5) * 0.1, 0.0, 0.15);
+                    phys.velocity.set(0, 0, 0);
                     phys.resting = false;
                 }
                 this.playSparkleSound();
@@ -5046,7 +5701,7 @@
                     isPreview: true
                 };
                 this.dispensedClouds.push(previewCloud);
-                this.viajeGroup.add(previewCloud);
+                (this.planeSceneGroup || this.viajeGroup).add(previewCloud);
             }
 
             createSingleFallbackCloud() {
@@ -5072,7 +5727,7 @@
                 this.createFallbackClouds();
 
                 loader.load(modelUrls.planeScene, (gltf) => {
-                    if (this.skyFloorModel) this.viajeGroup.remove(this.skyFloorModel);
+                    if (this.skyFloorModel) this.skyFloorModel.parent?.remove(this.skyFloorModel);
                     this.skyFloorModel = gltf.scene;
                     this.skyFloorModel.traverse(child => {
                         if (child.isMesh) {
@@ -5097,8 +5752,9 @@
                         -fittedBox.min.y,
                         -fittedCenter.z
                     );
-                    this.viajeGroup.add(this.skyFloorModel);
+                    (this.planeSceneGroup || this.viajeGroup).add(this.skyFloorModel);
 
+                    (this.planeSceneGroup || this.viajeGroup).updateMatrixWorld(true);
                     this.skyFloorModel.updateMatrixWorld(true);
                     const finalBox = new THREE.Box3().setFromObject(this.skyFloorModel);
                     const finalSize = finalBox.getSize(new THREE.Vector3());
@@ -5121,7 +5777,7 @@
                 }, undefined, () => {});
 
                 loader.load(modelUrls.cloud, (gltf) => {
-                    this.skyClouds.forEach(cloud => this.viajeGroup.remove(cloud));
+                    this.skyClouds.forEach(cloud => cloud.parent?.remove(cloud));
                     this.skyClouds = [];
 
                     const cloudTemplate = gltf.scene;
@@ -5152,12 +5808,12 @@
                             phase: index * Math.PI * 0.45
                         };
                         this.skyClouds.push(cloud);
-                        this.viajeGroup.add(cloud);
+                        (this.planeSceneGroup || this.viajeGroup).add(cloud);
                     });
                 }, undefined, () => {});
 
                 loader.load(modelUrls.planeLarge, (gltf) => {
-                    if (this.largePlaneModel) this.viajeGroup.remove(this.largePlaneModel);
+                    if (this.largePlaneModel) this.largePlaneModel.parent?.remove(this.largePlaneModel);
                     this.largePlaneModel = gltf.scene;
                     this.largePlaneModel.traverse(child => {
                         if (child.isMesh) {
@@ -5169,7 +5825,7 @@
                     const box = new THREE.Box3().setFromObject(this.largePlaneModel);
                     const size = box.getSize(new THREE.Vector3());
                     const maxDim = Math.max(size.x, size.y, size.z);
-                    const scaleFactor = 0.9 / maxDim;
+                    const scaleFactor = 1.35 / maxDim;
                     const center = box.getCenter(new THREE.Vector3());
 
                     this.largePlaneModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
@@ -5179,8 +5835,8 @@
                         0.4 - center.z * scaleFactor
                     );
                     this.largePlaneModel.userData.baseY = 1.05 - box.min.y * scaleFactor;
-                    this.largePlaneModel.rotation.y = Math.PI / 2;
-                    this.viajeGroup.add(this.largePlaneModel);
+                    this.largePlaneModel.rotation.y = 0;
+                    (this.planeSceneGroup || this.viajeGroup).add(this.largePlaneModel);
 
                     if (this.activeTravelToy === 'plane' && this.leverModel) {
                         this.positionLeverOnPlane();
@@ -5221,7 +5877,7 @@
                         phase: index * Math.PI * 0.5
                     };
                     this.skyClouds.push(cloud);
-                    this.viajeGroup.add(cloud);
+                    (this.planeSceneGroup || this.viajeGroup).add(cloud);
                 });
             }
 
@@ -5273,6 +5929,7 @@
                     overlay.classList.remove('opacity-100');
                     overlay.classList.add('opacity-0', 'pointer-events-none');
                     if (this.currentSceneState === 'viaje') {
+                        this.startSceneAmbience(this.activeTravelToy);
                         this.showScenePanel();
                         this.setHint('escena');
                     }
@@ -5358,6 +6015,7 @@
                 document.getElementById('panel-escena')?.classList.add('hidden');
                 this.setHint('volviendo');
 
+                this.stopSceneAmbience();
                 this.playSweepSound();
 
                 setTimeout(() => {
@@ -5389,6 +6047,7 @@
                     });
 
                     this.currentSceneState = 'taller';
+                    this.updateXRToyMenuVisibility();
                     this.transitionTriggered = false;
                     this.activeTravelToy = null;
                     this.activeSceneConfig = null;
@@ -5408,6 +6067,7 @@
                 this._lastTime = elapsedTime;
                 this.updatePreviewKeyboardControls(delta);
                 this.updatePreviewHeldObjects();
+                this.updateXRControllerMotion(delta);
                 this.updatePhysics(delta);
                 this.updateXRControllerInteraction();
 
@@ -5431,7 +6091,10 @@
                                 pos.setY(i, Math.sin(x * 0.7 + t * 0.9) * 0.18 + Math.sin(z * 0.5 + t * 0.7) * 0.14);
                             }
                             pos.needsUpdate = true;
-                            this.seaMesh.geometry.computeVertexNormals();
+                            if (elapsedTime - this._seaLastNormalUpdate >= 1 / 24) {
+                                this.seaMesh.geometry.computeVertexNormals();
+                                this._seaLastNormalUpdate = elapsedTime;
+                            }
                         }
                     }
                     if (this.seaBoat) {
@@ -5473,8 +6136,6 @@
                         this.cloudMachine.rotation.y = Math.sin(elapsedTime * 0.7) * 0.05;
                     }
 
-                    this.updateCloudScaleGesture();
-
                     if (this.dispensedClouds && this.dispensedClouds.length > 0) {
                         const aliveClouds = [];
                         this.dispensedClouds.forEach(cloud => {
@@ -5508,7 +6169,8 @@
                                 });
                                 if (opacity <= 0) {
                                     this.unregisterPhysicsObject(cloud);
-                                    this.viajeGroup.remove(cloud);
+                                    cloud.parent?.remove(cloud);
+                                    this.skyMovableObjects = this.skyMovableObjects.filter(obj => obj !== cloud);
                                     return; // no la agregamos a aliveClouds
                                 }
                             }
@@ -5535,7 +6197,7 @@
 
                     // Efecto titileo de luz de camarote
                     if (this.boatCabinLight) {
-                        this.boatCabinLight.intensity = 2.5 + Math.sin(elapsedTime * 5.0) * 0.2 + Math.random() * 0.05;
+                        this.boatCabinLight.intensity = 3.0 + Math.sin(elapsedTime * 5.0) * 0.26 + Math.random() * 0.06;
                     }
                     return; 
                 }
@@ -5549,6 +6211,8 @@
                         this.candleFlame.scale.x = 1.0 + Math.cos(this.candleTime * 1.8) * 0.1;
                     }
                 }
+
+                this.animateWorkshopOnboardingBook(elapsedTime);
 
                 // Deteccion de cualquier juguete en pedestal
                 const toyOnPedestal = this.getToyOnPedestal();
@@ -5700,6 +6364,208 @@
                 btnMusic.addEventListener('click', () => {
                     this.toggleMusicBoxLoop();
                 });
+            }
+
+            // --- Ambientes sonoros de las escenas ---
+            stopSceneAmbience() {
+                const sceneAudio = this.sceneAudio;
+                if (!sceneAudio) return;
+
+                sceneAudio.timers.forEach(timer => clearInterval(timer));
+                sceneAudio.timers = [];
+                this.stopTrainTravelMusic();
+
+                const ctx = this.audioCtx;
+                sceneAudio.sources.forEach(({ source, gain, extraNodes = [] }) => {
+                    try {
+                        if (ctx && gain) {
+                            const now = ctx.currentTime;
+                            gain.gain.cancelScheduledValues(now);
+                            gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
+                            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+                            source.stop(now + 0.18);
+                            extraNodes.forEach(node => node.stop?.(now + 0.18));
+                        } else {
+                            source.stop?.();
+                        }
+                    } catch (e) {}
+                });
+                sceneAudio.sources = [];
+                sceneAudio.mediaElements.forEach(audio => {
+                    try {
+                        audio.pause();
+                        audio.currentTime = 0;
+                        audio.removeAttribute('src');
+                        audio.load();
+                    } catch (e) {}
+                });
+                sceneAudio.mediaElements = [];
+                sceneAudio.mode = null;
+            }
+
+            playSceneMedia(url, { loop = false, volume = 0.12 } = {}) {
+                const audio = new Audio(url);
+                audio.preload = 'auto';
+                audio.loop = loop;
+                audio.volume = THREE.MathUtils.clamp(volume, 0, 1);
+                audio.addEventListener('ended', () => {
+                    this.sceneAudio.mediaElements = this.sceneAudio.mediaElements.filter(item => item !== audio);
+                }, { once: true });
+                this.sceneAudio.mediaElements.push(audio);
+                audio.play().catch(() => {});
+                return audio;
+            }
+
+            playBoatChestOpenSound() {
+                this.playSceneMedia(
+                    'https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/main/682825__jonjonidk__exo-sound.wav',
+                    { volume: 0.26 }
+                );
+            }
+
+            createAmbientNoise({ highpass = 0, lowpass = 2200, volume = 0.05, movement = 0 } = {}) {
+                const ctx = this.getAudioContext();
+                const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 2.5), ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < data.length; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+                source.loop = true;
+                const highFilter = ctx.createBiquadFilter();
+                highFilter.type = 'highpass';
+                highFilter.frequency.value = highpass;
+                const lowFilter = ctx.createBiquadFilter();
+                lowFilter.type = 'lowpass';
+                lowFilter.frequency.value = lowpass;
+                const gain = ctx.createGain();
+                gain.gain.value = volume;
+                source.connect(highFilter);
+                highFilter.connect(lowFilter);
+                lowFilter.connect(gain);
+                gain.connect(ctx.destination);
+
+                const extraNodes = [];
+                if (movement > 0) {
+                    const lfo = ctx.createOscillator();
+                    const lfoGain = ctx.createGain();
+                    lfo.type = 'sine';
+                    lfo.frequency.value = movement;
+                    lfoGain.gain.value = Math.min(lowpass * 0.35, 320);
+                    lfo.connect(lfoGain);
+                    lfoGain.connect(lowFilter.frequency);
+                    lfo.start();
+                    extraNodes.push(lfo);
+                }
+
+                source.start();
+                this.sceneAudio.sources.push({ source, gain, extraNodes });
+            }
+
+            playSceneTone(frequency, duration, volume, type = 'sine') {
+                try {
+                    const ctx = this.getAudioContext();
+                    const now = ctx.currentTime;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(frequency, now);
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.linearRampToValueAtTime(volume, now + 0.025);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + duration + 0.03);
+                } catch (e) {}
+            }
+
+            playForestChirp() {
+                try {
+                    const ctx = this.getAudioContext();
+                    const now = ctx.currentTime;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    const start = 1500 + Math.random() * 850;
+                    osc.frequency.setValueAtTime(start, now);
+                    osc.frequency.exponentialRampToValueAtTime(start * 1.38, now + 0.09);
+                    osc.frequency.exponentialRampToValueAtTime(start * 0.92, now + 0.21);
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.linearRampToValueAtTime(0.026, now + 0.025);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.26);
+                } catch (e) {}
+            }
+
+            startSceneAmbience(sceneType) {
+                if (!sceneType || this.sceneAudio?.mode === sceneType) return;
+                this.stopSceneAmbience();
+
+                try {
+                    this.getAudioContext();
+                    this.sceneAudio.mode = sceneType;
+
+                    if (sceneType === 'boat') {
+                        this.playSceneMedia(
+                            'https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/main/838524__benson_arizona__20251216_1056_harbour.mp3',
+                            { loop: true, volume: 0.08 }
+                        );
+                    } else if (sceneType === 'train') {
+                        this.createAmbientNoise({ highpass: 420, lowpass: 3600, volume: 0.026, movement: 0.045 });
+                        this.playForestChirp();
+                        const birdTimer = setInterval(() => {
+                            if (Math.random() > 0.35) this.playForestChirp();
+                        }, 2600);
+                        this.sceneAudio.timers.push(birdTimer);
+                    } else if (sceneType === 'plane') {
+                        this.createAmbientNoise({ highpass: 170, lowpass: 980, volume: 0.035, movement: 0.075 });
+                        this.startPlaneMysticMusic();
+                    }
+                } catch (e) {
+                    this.stopSceneAmbience();
+                }
+            }
+
+            startTrainTravelMusic() {
+                if (this.sceneAudio?.mode !== 'train' || this.sceneAudio.trainMusicTimer) return;
+                const notes = [196.0, 246.94, 293.66, 246.94, 220.0, 261.63, 329.63, 293.66];
+                const playStep = () => {
+                    const note = notes[this.sceneAudio.trainMusicStep % notes.length];
+                    this.playSceneTone(note, 0.23, 0.034, 'triangle');
+                    if (this.sceneAudio.trainMusicStep % 2 === 0) {
+                        this.playSceneTone(note / 2, 0.13, 0.016, 'sine');
+                    }
+                    this.sceneAudio.trainMusicStep++;
+                };
+                this.sceneAudio.trainMusicStep = 0;
+                playStep();
+                this.sceneAudio.trainMusicTimer = setInterval(playStep, 285);
+            }
+
+            stopTrainTravelMusic() {
+                if (!this.sceneAudio?.trainMusicTimer) return;
+                clearInterval(this.sceneAudio.trainMusicTimer);
+                this.sceneAudio.trainMusicTimer = null;
+                this.sceneAudio.trainMusicStep = 0;
+            }
+
+            startPlaneMysticMusic() {
+                const notes = [174.61, 220.0, 261.63, 329.63, 293.66, 246.94];
+                const playChord = () => {
+                    const note = notes[this.sceneAudio.planeMusicStep % notes.length];
+                    this.playSceneTone(note, 1.75, 0.018, 'sine');
+                    this.playSceneTone(note * 1.5, 1.4, 0.009, 'triangle');
+                    this.sceneAudio.planeMusicStep++;
+                };
+                this.sceneAudio.planeMusicStep = 0;
+                playChord();
+                this.sceneAudio.timers.push(setInterval(playChord, 1900));
             }
 
             // --- Sintetizador Web Audio (Cajita de Música) ---
@@ -5969,20 +6835,3 @@
     </script>
   </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
