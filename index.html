@@ -10,7 +10,7 @@
     <!-- Tailwind CSS para la UI de control del taller -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inknut+Antiqua:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Iconos Material Symbols -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -259,6 +259,8 @@
             cofre: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1cofre.glb",
             cofreBody: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/main/1cofre.glb",
             cofreLid: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/main/1tapa-cofre.glb",
+            salida: "https://raw.githubusercontent.com/Joo0o0oo/Assets-juguetes-imposibles/main/salida.glb",
+            perro: "https://raw.githubusercontent.com/Joo0o0oo/Assets-juguetes-imposibles/main/perrocute.glb",
             timonBase: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1timon-base.glb",
             timon: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/1timon.glb",
             onboardingBook: "https://raw.githubusercontent.com/Joo0o0oo/Joo0o0oo/Intento2/libro.glb",
@@ -441,6 +443,10 @@
                 this.trainInnerLights = [];
                 this.lastTrainSteamTime = 0;
                 this.trainFireflies = null;
+                this.trainParty = null;
+                this.trainPartyDogTemplate = null;
+                this.trainPartyDogLoading = false;
+                this.trainPartyDogCallbacks = [];
                 this.truckSceneRoot = null;
                 this.truckInteractiveObjects = [];
                 this.truckMovableObjects = [];
@@ -451,6 +457,7 @@
                 this.truckWheels = [];
                 this.truckWheelSnapPoints = [];
                 this.truckResetTimeout = null;
+                this.truckLaunches = [];
                 this.truckSignal = null;
                 this.truckSignalState = 'red';
                 this.defaultSceneBackground = null;
@@ -464,6 +471,7 @@
                 this.leverHandle = null; // El nodo rotatorio de la palanca
                 this.leverTargetRotation = 0;
                 this.leverCurrentRotation = 0;
+                this.leverAnimationTimer = null;
 
                 // Variables de Audio
                 this.audioCtx = null;
@@ -477,6 +485,7 @@
                     mediaElements: [],
                     timers: [],
                     trainMusicTimer: null,
+                    trainMusicElement: null,
                     trainMusicStep: 0,
                     planeMusicStep: 0
                 };
@@ -692,6 +701,7 @@
                 hint.name = 'cartel-mano-izquierda-menu-x';
                 hint.position.set(-0.06, 0.18, -0.16);
                 hint.rotation.set(-0.45, 0.18, 0.05);
+                hint.scale.setScalar(0.25);
 
                 const panel = new THREE.Mesh(
                     new THREE.PlaneGeometry(0.42, 0.18),
@@ -973,6 +983,122 @@
                 return true;
             }
 
+            createXRCanvasTexture(width, height, draw) {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                draw(ctx, width, height);
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.colorSpace = THREE.SRGBColorSpace;
+                return texture;
+            }
+
+            drawXRRoundRect(ctx, x, y, width, height, radius, fill, stroke = null, lineWidth = 1) {
+                ctx.beginPath();
+                ctx.roundRect(x, y, width, height, radius);
+                if (fill) {
+                    ctx.fillStyle = fill;
+                    ctx.fill();
+                }
+                if (stroke) {
+                    ctx.strokeStyle = stroke;
+                    ctx.lineWidth = lineWidth;
+                    ctx.stroke();
+                }
+            }
+
+            drawXRMenuIcon(ctx, icon, x, y, size, color = '#718348') {
+                ctx.fillStyle = color;
+                ctx.font = `${size}px "Material Symbols Outlined", Arial, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(icon, x, y);
+            }
+
+            createXRMenuFrameTexture(title, icon, width = 900, height = 1500) {
+                return this.createXRCanvasTexture(width, height, (ctx, canvasWidth, canvasHeight) => {
+                    this.drawXRRoundRect(ctx, 7, 7, canvasWidth - 14, canvasHeight - 14, 54, '#2a2a1a', 'rgba(113, 131, 72, 0.55)', 7);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.roundRect(7, 7, canvasWidth - 14, canvasHeight - 14, 54);
+                    ctx.clip();
+                    ctx.fillStyle = '#4C5C2D';
+                    ctx.fillRect(7, 7, canvasWidth - 14, 174);
+                    ctx.restore();
+                    ctx.strokeStyle = 'rgba(113, 131, 72, 0.4)';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(30, 180);
+                    ctx.lineTo(canvasWidth - 30, 180);
+                    ctx.stroke();
+                    this.drawXRMenuIcon(ctx, icon, canvasWidth / 2 - 102, 95, 52, 'rgba(255, 244, 245, 0.78)');
+                    ctx.fillStyle = '#FFF4F5';
+                    ctx.font = '600 42px "Inknut Antiqua", Inter, serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(title, canvasWidth / 2 + 22, 95);
+                });
+            }
+
+            createXRCalibrationTexture(level) {
+                const percentage = THREE.MathUtils.clamp(Math.round((level / 200) * 100), 0, 100);
+                return this.createXRCanvasTexture(900, 430, (ctx, width) => {
+                    this.drawXRMenuIcon(ctx, 'light_mode', 62, 56, 37);
+                    ctx.fillStyle = '#718348';
+                    ctx.font = '600 26px Inter, Arial, sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('CALIBRAR LUZ AMBIENTE', 98, 56);
+                    this.drawXRRoundRect(ctx, 146, 157, 608, 18, 9, 'rgba(76, 92, 45, 0.45)');
+                    this.drawXRRoundRect(ctx, 146, 157, 608 * (percentage / 100), 18, 9, '#718348');
+                    ctx.font = '500 25px Inter, Arial, sans-serif';
+                    ctx.fillStyle = 'rgba(255, 244, 245, 0.45)';
+                    ctx.textAlign = 'left';
+                    ctx.fillText('oscuro', 146, 228);
+                    ctx.textAlign = 'right';
+                    ctx.fillText('maximo', 754, 228);
+                    ctx.fillStyle = '#FFF4F5';
+                    ctx.font = '600 32px Inter, Arial, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${percentage}%`, width / 2, 228);
+                });
+            }
+
+            createXRMenuRowTexture(icon, label, { danger = false, badge = '' } = {}) {
+                return this.createXRCanvasTexture(820, 132, (ctx, width, height) => {
+                    const accent = danger ? '#D96868' : '#718348';
+                    const background = danger ? 'rgba(217, 104, 104, 0.10)' : 'rgba(76, 92, 45, 0.18)';
+                    const border = danger ? 'rgba(217, 104, 104, 0.35)' : 'rgba(113, 131, 72, 0.30)';
+                    this.drawXRRoundRect(ctx, 4, 4, width - 8, height - 8, 22, background, border, 3);
+                    this.drawXRMenuIcon(ctx, icon, 56, height / 2, 42, accent);
+                    ctx.fillStyle = danger ? '#D96868' : '#FFF4F5';
+                    ctx.font = '500 34px Inter, Arial, sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(label, 104, height / 2);
+                    if (badge) {
+                        this.drawXRRoundRect(ctx, width - 132, 39, 100, 54, 27, 'rgba(113, 131, 72, 0.20)', 'rgba(113, 131, 72, 0.40)', 2);
+                        ctx.fillStyle = '#718348';
+                        ctx.font = '600 23px Inter, Arial, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(badge, width - 82, height / 2);
+                    }
+                });
+            }
+
+            createXRToyCardTexture(icon, label) {
+                return this.createXRCanvasTexture(340, 260, (ctx, width, height) => {
+                    this.drawXRRoundRect(ctx, 4, 4, width - 8, height - 8, 22, 'rgba(76, 92, 45, 0.20)', 'rgba(113, 131, 72, 0.35)', 3);
+                    this.drawXRMenuIcon(ctx, icon, width / 2, 104, 68);
+                    ctx.fillStyle = '#FFF4F5';
+                    ctx.font = '500 30px Inter, Arial, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(label, width / 2, 192);
+                });
+            }
+
             createXRMenu() {
                 if (this.xrMenu) return;
 
@@ -981,70 +1107,52 @@
                 menu.visible = false;
 
                 const back = new THREE.Mesh(
-                    new THREE.PlaneGeometry(1.22, 2.18),
-                    new THREE.MeshBasicMaterial({ color: 0x464644, transparent: true, opacity: 0.92, side: THREE.DoubleSide })
+                    new THREE.PlaneGeometry(1.28, 2.20),
+                    new THREE.MeshBasicMaterial({ map: this.createXRMenuFrameTexture('Opciones', 'settings'), transparent: true, side: THREE.DoubleSide })
                 );
                 back.position.z = -0.015;
                 menu.add(back);
 
-                const title = new THREE.Mesh(
-                    new THREE.PlaneGeometry(1.02, 0.18),
-                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('Menu de inicio', 512, 128, { size: 36, background: 'rgba(76, 92, 45, 0.98)', border: 'rgba(113, 131, 72, 0.96)' }), transparent: true, side: THREE.DoubleSide })
-                );
-                title.position.y = 0.91;
-                menu.add(title);
-
                 this.xrMenuItems = [];
-                const lightLabel = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.82, 0.13),
-                    new THREE.MeshBasicMaterial({
-                        map: this.createXRTextTexture('Calibrar luz ambiente', 512, 96, { size: 28, background: 'rgba(70, 70, 68, 0.86)', border: 'rgba(113, 131, 72, 0.55)' }),
-                        transparent: true,
-                        side: THREE.DoubleSide
-                    })
-                );
-                lightLabel.position.set(0, 0.71, 0.002);
-                menu.add(lightLabel);
-
                 const lightMinus = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.22, 0.17),
-                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('-', 256, 128, { size: 58 }), transparent: true, side: THREE.DoubleSide })
+                    new THREE.PlaneGeometry(0.16, 0.16),
+                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('-', 256, 128, { size: 52, background: 'rgba(76, 92, 45, 0.5)', border: 'rgba(113, 131, 72, 0.7)' }), transparent: true, side: THREE.DoubleSide })
                 );
-                lightMinus.position.set(-0.38, 0.53, 0.002);
+                lightMinus.position.set(-0.50, 0.50, 0.003);
                 lightMinus.userData.xrMenuAction = 'light-down';
                 menu.add(lightMinus);
                 this.xrMenuItems.push(lightMinus);
 
                 this.xrLightValueMesh = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.38, 0.17),
-                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture(`${this.xrLightLevel}%`, 256, 128, { size: 38, background: 'rgba(76, 92, 45, 0.95)' }), transparent: true, side: THREE.DoubleSide })
+                    new THREE.PlaneGeometry(0.94, 0.42),
+                    new THREE.MeshBasicMaterial({ map: this.createXRCalibrationTexture(this.xrLightLevel), transparent: true, side: THREE.DoubleSide })
                 );
-                this.xrLightValueMesh.position.set(0, 0.53, 0.002);
+                this.xrLightValueMesh.position.set(0, 0.51, 0.001);
                 menu.add(this.xrLightValueMesh);
 
                 const lightPlus = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.22, 0.17),
-                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('+', 256, 128, { size: 52 }), transparent: true, side: THREE.DoubleSide })
+                    new THREE.PlaneGeometry(0.16, 0.16),
+                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('+', 256, 128, { size: 46, background: 'rgba(76, 92, 45, 0.5)', border: 'rgba(113, 131, 72, 0.7)' }), transparent: true, side: THREE.DoubleSide })
                 );
-                lightPlus.position.set(0.38, 0.53, 0.002);
+                lightPlus.position.set(0.50, 0.50, 0.003);
                 lightPlus.userData.xrMenuAction = 'light-up';
                 menu.add(lightPlus);
                 this.xrMenuItems.push(lightPlus);
 
                 const items = [
-                    { label: 'Guia del taller', action: 'onboarding' },
-                    { label: 'Musica', action: 'music' },
-                    { label: 'Volver al inicio', action: 'home' },
-                    { label: 'Cerrar menu', action: 'close' },
-                    { label: 'Cerrar simulacion', action: 'exit' }
+                    { label: 'Guia del taller', icon: 'auto_stories', action: 'onboarding' },
+                    { label: 'Musica', icon: 'music_note', action: 'music', badge: 'activa' },
+                    { label: 'Volver al inicio', icon: 'home', action: 'home' },
+                    { label: 'Cerrar menu', icon: 'close', action: 'close' },
+                    { label: 'Cerrar simulacion', icon: 'power_settings_new', action: 'exit', danger: true }
                 ];
 
                 items.forEach((item, index) => {
                     const button = new THREE.Mesh(
-                        new THREE.PlaneGeometry(0.96, 0.15),
-                        new THREE.MeshBasicMaterial({ map: this.createXRTextTexture(item.label, 512, 128, { size: 28 }), transparent: true, side: THREE.DoubleSide })
+                        new THREE.PlaneGeometry(1.04, 0.16),
+                        new THREE.MeshBasicMaterial({ map: this.createXRMenuRowTexture(item.icon, item.label, { danger: item.danger, badge: item.badge }), transparent: true, side: THREE.DoubleSide })
                     );
-                    button.position.set(0, 0.28 - index * 0.17, 0.002);
+                    button.position.set(0, 0.17 - index * 0.18, 0.004);
                     button.userData.xrMenuAction = item.action;
                     menu.add(button);
                     this.xrMenuItems.push(button);
@@ -1052,40 +1160,34 @@
 
                 const toyPanel = new THREE.Group();
                 toyPanel.name = 'Panel de juguetes del taller';
-                toyPanel.position.set(1.18, 0.08, 0);
+                toyPanel.position.set(1.42, 0.04, 0);
                 const toyBack = new THREE.Mesh(
-                    new THREE.PlaneGeometry(1.16, 1.30),
-                    new THREE.MeshBasicMaterial({ color: 0x464644, transparent: true, opacity: 0.92, side: THREE.DoubleSide })
+                    new THREE.PlaneGeometry(1.18, 1.48),
+                    new THREE.MeshBasicMaterial({ map: this.createXRMenuFrameTexture('Juguetes', 'toys', 900, 1120), transparent: true, side: THREE.DoubleSide })
                 );
                 toyBack.position.z = -0.015;
                 toyPanel.add(toyBack);
-                const toyLabel = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.98, 0.16),
-                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('Juguetes', 512, 128, { size: 34, background: 'rgba(76, 92, 45, 0.98)', border: 'rgba(113, 131, 72, 0.96)' }), transparent: true, side: THREE.DoubleSide })
-                );
-                toyLabel.position.set(0, 0.50, 0.002);
-                toyPanel.add(toyLabel);
                 const toyActions = [
-                    { label: 'Tren', action: 'spawn-train' },
-                    { label: 'Avion', action: 'spawn-plane' },
-                    { label: 'Barco', action: 'spawn-boat' },
-                    { label: 'Camion', action: 'spawn-truck' }
+                    { label: 'Tren', icon: 'train', action: 'spawn-train' },
+                    { label: 'Avion', icon: 'flight', action: 'spawn-plane' },
+                    { label: 'Barco', icon: 'sailing', action: 'spawn-boat' },
+                    { label: 'Camion', icon: 'local_shipping', action: 'spawn-truck' }
                 ];
                 toyActions.forEach((item, index) => {
                     const button = new THREE.Mesh(
-                        new THREE.PlaneGeometry(0.46, 0.16),
-                        new THREE.MeshBasicMaterial({ map: this.createXRTextTexture(item.label, 256, 128, { size: 26 }), transparent: true, side: THREE.DoubleSide })
+                        new THREE.PlaneGeometry(0.48, 0.27),
+                        new THREE.MeshBasicMaterial({ map: this.createXRToyCardTexture(item.icon, item.label), transparent: true, side: THREE.DoubleSide })
                     );
-                    button.position.set(index % 2 === 0 ? -0.25 : 0.25, 0.27 - Math.floor(index / 2) * 0.21, 0.002);
+                    button.position.set(index % 2 === 0 ? -0.28 : 0.28, 0.20 - Math.floor(index / 2) * 0.32, 0.004);
                     button.userData.xrMenuAction = item.action;
                     toyPanel.add(button);
                     this.xrMenuItems.push(button);
                 });
                 const clearButton = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.96, 0.16),
-                    new THREE.MeshBasicMaterial({ map: this.createXRTextTexture('Despejar juguetes', 512, 128, { size: 28, background: 'rgba(217, 104, 104, 0.5)', border: 'rgba(217, 104, 104, 0.9)' }), transparent: true, side: THREE.DoubleSide })
+                    new THREE.PlaneGeometry(0.98, 0.16),
+                    new THREE.MeshBasicMaterial({ map: this.createXRMenuRowTexture('delete_sweep', 'Despejar juguetes', { danger: true }), transparent: true, side: THREE.DoubleSide })
                 );
-                clearButton.position.set(0, -0.29, 0.002);
+                clearButton.position.set(0, -0.50, 0.004);
                 clearButton.userData.xrMenuAction = 'clear-toys';
                 toyPanel.add(clearButton);
                 this.xrMenuItems.push(clearButton);
@@ -1234,10 +1336,7 @@
             updateXRLightingReadout() {
                 if (!this.xrLightValueMesh?.material) return;
                 const oldMap = this.xrLightValueMesh.material.map;
-                this.xrLightValueMesh.material.map = this.createXRTextTexture(`${Math.round(this.xrLightLevel)}%`, 256, 128, {
-                    size: 38,
-                    background: 'rgba(76, 92, 45, 0.95)'
-                });
+                this.xrLightValueMesh.material.map = this.createXRCalibrationTexture(this.xrLightLevel);
                 this.xrLightValueMesh.material.needsUpdate = true;
                 if (oldMap) oldMap.dispose();
             }
@@ -1259,6 +1358,7 @@
                         const intersectsExit = this.raycaster.intersectObject(this.leverModel, true);
                         if (intersectsExit.length > 0) {
                             this.playLeverClickSound();
+                            this.animateExitLever();
                             this.flashExitSign();
                             this.returnToTaller();
                             return;
@@ -1439,9 +1539,13 @@
                 if (isOnPedestal) {
                     this.selectedObject.position.set(0, 0.94, -0.5);
                     this.selectedObject.userData.isFlying = false;
-                    this.playClinkSound();
-                    if (sceneConfigs[type] && !this.transitionTriggered) {
+                    if (type === 'truck') {
+                        this.launchTruckFromPedestal(this.selectedObject);
+                    } else if (sceneConfigs[type] && !this.transitionTriggered) {
+                        this.playClinkSound();
                         this.triggerTravelTransition(type);
+                    } else {
+                        this.playClinkSound();
                     }
                 } else if (currentY >= 1.7 && type === 'plane') {
                     this.selectedObject.userData.isFlying = true;
@@ -1453,6 +1557,87 @@
                 }
                 this.selectedObject = null;
             }
+
+            launchTruckFromPedestal(truck) {
+                if (!truck?.parent || truck.userData.isLaunchingTruck) return;
+                this.unregisterPhysicsObject(truck);
+                truck.userData.isLaunchingTruck = true;
+                const start = truck.position.clone();
+                const end = new THREE.Vector3(1.05, 0.12, 0.48);
+                const smoke = [];
+
+                for (let index = 0; index < 10; index++) {
+                    const puff = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.028 + Math.random() * 0.018, 8, 6),
+                        new THREE.MeshStandardMaterial({ color: 0xc9d0ce, transparent: true, opacity: 0.56, roughness: 1 })
+                    );
+                    puff.position.copy(start).add(new THREE.Vector3(-0.07 - index * 0.018, 0.05 + Math.random() * 0.06, -0.02 + (Math.random() - 0.5) * 0.08));
+                    this.tallerGroup.add(puff);
+                    smoke.push({
+                        mesh: puff,
+                        velocity: new THREE.Vector3(-0.16 - Math.random() * 0.10, 0.16 + Math.random() * 0.08, (Math.random() - 0.5) * 0.12),
+                        age: -index * 0.045,
+                        life: 0.7 + Math.random() * 0.25
+                    });
+                }
+
+                this.truckLaunches.push({
+                    truck,
+                    start,
+                    end,
+                    startRotationY: truck.rotation.y,
+                    progress: 0,
+                    smoke
+                });
+                this.playTruckHonkSound();
+                this.setHint('agarrando');
+            }
+
+            updateTruckLaunches(delta) {
+                if (!this.truckLaunches.length) return;
+                const active = [];
+                this.truckLaunches.forEach(launch => {
+                    launch.progress = Math.min(1, launch.progress + delta / 1.08);
+                    const t = launch.progress;
+                    const arc = Math.sin(t * Math.PI);
+                    launch.truck.position.lerpVectors(launch.start, launch.end, t);
+                    launch.truck.position.y += arc * 0.72;
+                    launch.truck.rotation.y = THREE.MathUtils.lerp(launch.startRotationY, -Math.PI / 2, t);
+                    launch.truck.rotation.z = -arc * 0.22;
+
+                    launch.smoke.forEach(puff => {
+                        puff.age += delta;
+                        if (puff.age < 0 || !puff.mesh.parent) return;
+                        puff.mesh.position.addScaledVector(puff.velocity, delta);
+                        puff.mesh.scale.multiplyScalar(1 + delta * 1.4);
+                        puff.mesh.material.opacity = Math.max(0, 0.56 * (1 - puff.age / puff.life));
+                        if (puff.age >= puff.life) {
+                            puff.mesh.parent.remove(puff.mesh);
+                            puff.mesh.geometry.dispose();
+                            puff.mesh.material.dispose();
+                        }
+                    });
+
+                    if (t < 1) {
+                        active.push(launch);
+                        return;
+                    }
+
+                    launch.truck.position.copy(launch.end);
+                    launch.truck.rotation.z = 0;
+                    launch.truck.userData.isLaunchingTruck = false;
+                    this.registerPhysicsObject(launch.truck, 0.0);
+                    const physics = this.physicsObjects.find(item => item.mesh === launch.truck);
+                    if (physics) {
+                        physics.velocity.set(0, 0, 0);
+                        physics.resting = false;
+                        physics.onGround = false;
+                    }
+                    this.playClinkSound();
+                });
+                this.truckLaunches = active;
+            }
+
             setupLighting() {
                 // Luz de ambiente íntima
                 this.ambientLight = new THREE.AmbientLight(0x3d2110, 0.45);
@@ -2316,6 +2501,12 @@
             clearToys() {
                 this._initialToysSpawned = false;
                 this.clearStaticSurfaces();
+                this.truckLaunches.forEach(launch => launch.smoke.forEach(puff => {
+                    puff.mesh.parent?.remove(puff.mesh);
+                    puff.mesh.geometry.dispose();
+                    puff.mesh.material.dispose();
+                }));
+                this.truckLaunches = [];
                 this.objects.forEach(obj => {
                     if (obj === this.onboardingBook) return;
                     this.tallerGroup.remove(obj);
@@ -2691,6 +2882,21 @@
                 camera.rotation.set(this.previewPitch, this.previewYaw, 0);
             }
 
+            resetWorkshopSpawn() {
+                this.previewSpectatorMode = false;
+                this.previewKeys.clear();
+                if (this.isXRSessionActive) return;
+                const camera = xb.core.camera;
+                if (!camera) return;
+                camera.position.copy(this.previewInitialCameraPosition);
+                this.previewYaw = this.previewInitialYaw;
+                this.previewPitch = this.previewInitialPitch;
+                this.previewEyeHeight = this.previewInitialCameraPosition.y;
+                this.previewTargetEyeHeight = this.previewInitialCameraPosition.y;
+                camera.rotation.order = 'YXZ';
+                camera.rotation.set(this.previewPitch, this.previewYaw, 0);
+            }
+
             togglePreviewOptionsMenu() {
                 const header = document.querySelector('header');
                 const footer = document.querySelector('footer');
@@ -2797,6 +3003,8 @@
                 if (!controller || !object) return false;
                 const handedness = controller.userData.handedness;
                 if (object === this.heldObjectLeft || object === this.heldObjectRight) return false;
+
+                if (sceneType === 'sky') this.scheduleSkyCoinRespawn(object);
 
                 const physObj = this.physicsObjects.find(p => p.mesh === object);
                 if (physObj) {
@@ -2905,6 +3113,7 @@
                         const intersectsExit = this.raycaster.intersectObject(this.leverModel, true);
                         if (intersectsExit.length > 0) {
                             this.playLeverClickSound();
+                            this.animateExitLever();
                             this.flashExitSign();
                             this.returnToTaller();
                             return;
@@ -3008,11 +3217,12 @@
                     const wheelHit = this.raycaster.intersectObject(this.boatWheel, true);
                     if (wheelHit.length > 0) {
                         const fixedPos = this.boatWheel.position.clone();
-                        this.boatWheel.rotation.z += Math.PI / 8;
+                        const towardBlueWall = this.boatTurnTarget >= 0;
+                        this.boatWheel.rotation.z = towardBlueWall ? -Math.PI / 8 : Math.PI / 8;
                         this.boatWheel.position.copy(fixedPos);
-                        this.boatTurnTarget += Math.PI / 5;
+                        this.boatTurnTarget = towardBlueWall ? -Math.PI / 5 : Math.PI / 5;
                         if (this.boatSceneRoot) {
-                            this.boatSceneRoot.userData.tiltTarget = (this.boatSceneRoot.userData.tiltTarget || 0) === 0.08 ? -0.08 : 0.08;
+                            this.boatSceneRoot.userData.tiltTarget = towardBlueWall ? 0.08 : -0.08;
                         }
                         this.spawnBoatFishJump();
                         this.playWobbleSound();
@@ -3029,7 +3239,7 @@
                     this.setBoatChestGlow(true);
                     this.spawnChestItems();
                     this.playBoatChestOpenSound();
-                    setTimeout(() => this.closeBoatChest(), 10000);
+                    setTimeout(() => this.closeBoatChest(), 1100);
                     return true;
                 }
                 if (!allowObjectGrab || !this.boatMovableObjects.length) return false;
@@ -3334,6 +3544,10 @@
                 this.trainInnerLights = [];
                 this.lastTrainSteamTime = 0;
                 this.trainFireflies = null;
+                this.trainParty = null;
+                this.trainPartyDogTemplate = null;
+                this.trainPartyDogLoading = false;
+                this.trainPartyDogCallbacks = [];
                 this.truckSceneRoot = null;
                 this.truckInteractiveObjects = [];
                 this.truckMovableObjects = [];
@@ -3510,93 +3724,101 @@
             // Cargar e instalar el Modelo de la Palanca GLTF en la pared
             createExitPillar() {
                 const group = new THREE.Group();
-                group.name = 'exit-pillar';
-                group.userData = { type: 'exitPillar' };
-                const signY = this.activeTravelToy === 'plane' ? 1.55 : 1.18;
-                const pillarHeight = signY - 0.16;
+                group.name = 'palanca-y-cartel-salida';
+                group.userData = { type: 'exitLever' };
+                const rotateSignForBoat = this.activeTravelToy === 'boat';
+                const planeOffset = this.activeTravelToy === 'plane' ? (this.planeSceneGroup?.position.y ?? this.planeSceneYOffset) : 0;
+                const signY = 2.12 - planeOffset;
+                const threadTopY = 3.80 - planeOffset;
+                const metal = new THREE.MeshStandardMaterial({ color: 0x2d3436, metalness: 0.62, roughness: 0.38 });
+                const brass = new THREE.MeshStandardMaterial({ color: 0xc79b3b, metalness: 0.72, roughness: 0.3 });
+                const handleMat = new THREE.MeshStandardMaterial({ color: 0x718348, emissive: 0x243214, emissiveIntensity: 0.35, roughness: 0.42 });
 
-                // Madera oscura para el pilar
-                const woodDark = new THREE.MeshStandardMaterial({ color: 0x3b2410, roughness: 0.85, metalness: 0.0 });
-                // Madera media para el panel
-                const woodPanel = new THREE.MeshStandardMaterial({
-                    color: 0x6b3f1e,
-                    roughness: 0.78,
-                    metalness: 0.0,
-                    emissive: new THREE.Color(0x2a1206),
-                    emissiveIntensity: 0.24
-                });
-                // Marco / borde tallado más claro
-                const woodFrame = new THREE.MeshStandardMaterial({
-                    color: 0x8b5a2b,
-                    roughness: 0.7,
-                    metalness: 0.0,
-                    emissive: new THREE.Color(0x5c300e),
-                    emissiveIntensity: 0.25
-                });
-
-                // Pilar octogonal de madera
-                const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.10, pillarHeight, 8), woodDark);
-                pillar.position.y = pillarHeight / 2;
-                pillar.castShadow = true;
-                group.add(pillar);
-
-                // Base
-                const base = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.20, 0.07, 8), woodDark);
-                base.position.y = 0.035;
+                // Palanca baja: reemplaza el pilar y mantiene la salida en el mismo punto del escenario.
+                const base = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.06, 16), metal);
+                base.position.y = 0.03;
                 base.castShadow = true;
-                group.add(base);
+                const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.07, 14), brass);
+                collar.position.y = 0.085;
+                const leverArm = new THREE.Group();
+                leverArm.position.y = 0.105;
+                leverArm.rotation.z = -Math.PI / 5;
+                const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.035, 0.48, 12), metal);
+                rod.position.y = 0.24;
+                const knob = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), handleMat);
+                knob.position.y = 0.49;
+                rod.castShadow = true;
+                knob.castShadow = true;
+                leverArm.add(rod, knob);
+                group.add(base, collar, leverArm);
+                this.leverHandle = leverArm;
 
-                // Panel de madera (fondo del cartel)
-                const panel = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.20, 0.05), woodPanel);
-                panel.position.y = signY;
-                panel.castShadow = true;
-                group.add(panel);
-
-                // Marco alrededor del cartel (4 listones delgados)
-                const frameH = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.025, 0.055), woodFrame);
-                const frameHb = frameH.clone();
-                frameH.position.set(0, signY + 0.11, 0);
-                frameHb.position.set(0, signY - 0.11, 0);
-                group.add(frameH, frameHb);
-                const frameV = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.22, 0.055), woodFrame);
-                const frameVr = frameV.clone();
-                frameV.position.set(-0.30, signY, 0);
-                frameVr.position.set(0.30, signY, 0);
-                group.add(frameV, frameVr);
-
-                // Texto SALIDA con fuente Inter, estilo tallado (letras oscuras sobre madera)
-                const texture = this.createWoodSignTexture('SALIDA');
-                const textPanel = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.50, 0.16),
-                    new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide })
-                );
-                textPanel.position.set(0, signY, 0.028);
-                group.add(textPanel);
-
+                const threadMat = new THREE.MeshBasicMaterial({ color: 0xd9d5bd, transparent: true, opacity: 0.76 });
+                const threadLength = threadTopY - (signY + 0.18);
+                [-0.26, 0.26].forEach(z => {
+                    const thread = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, threadLength, 6), threadMat);
+                    thread.position.set(0, signY + 0.18 + threadLength / 2, z);
+                    group.add(thread);
+                });
                 const glowMat = new THREE.MeshBasicMaterial({
-                    color: 0xffd778,
+                    color: 0x9dff82,
                     transparent: true,
-                    opacity: 0.18,
+                    opacity: 0.12,
                     depthWrite: false,
                     blending: THREE.AdditiveBlending,
                     side: THREE.DoubleSide
                 });
-                const glowPanel = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.20), glowMat);
-                glowPanel.position.set(0, signY, 0.031);
+                const glowPanel = new THREE.Mesh(new THREE.PlaneGeometry(0.74, 0.32), glowMat);
+                glowPanel.position.set(0, signY, 0.025);
                 group.add(glowPanel);
-
-                // Luz cálida tenue (vela / lámpara de madera)
-                const light = new THREE.PointLight(0xffd778, 0.75, 1.7);
-                light.position.set(0, signY + 0.17, 0.25);
+                const light = new THREE.PointLight(0x9dff82, 0.7, 2.0);
+                light.position.set(0, signY, 0.25);
                 group.add(light);
 
                 group.userData.exitSign = {
-                    panelMat: woodPanel,
-                    frameMat: woodFrame,
                     glowMat,
                     light,
+                    materials: [],
                     activeUntil: 0
                 };
+
+                const loader = new GLTFLoader();
+                loader.load(modelUrls.salida, (gltf) => {
+                    if (!group.parent) return;
+                    const signHolder = new THREE.Group();
+                    const signModel = gltf.scene;
+                    signModel.traverse(child => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                            const materials = Array.isArray(child.material) ? child.material : [child.material];
+                            materials.filter(Boolean).forEach(material => {
+                                if (material.emissive) group.userData.exitSign.materials.push(material);
+                            });
+                        }
+                    });
+                    signModel.updateMatrixWorld(true);
+                    const rawBox = new THREE.Box3().setFromObject(signModel);
+                    const rawSize = rawBox.getSize(new THREE.Vector3());
+                    const scale = 0.72 / Math.max(rawSize.x, rawSize.y, rawSize.z, 0.001);
+                    signModel.scale.multiplyScalar(scale);
+                    signModel.updateMatrixWorld(true);
+                    const box = new THREE.Box3().setFromObject(signModel);
+                    const center = box.getCenter(new THREE.Vector3());
+                    signModel.position.set(-center.x, -center.y, -center.z);
+                    signHolder.position.set(0, signY, 0.035);
+                    signHolder.rotation.y = rotateSignForBoat ? Math.PI / 2 : 0;
+                    signHolder.add(signModel);
+                    group.add(signHolder);
+                }, undefined, () => {
+                    const fallback = new THREE.Mesh(
+                        new THREE.PlaneGeometry(0.68, 0.26),
+                        new THREE.MeshBasicMaterial({ map: this.createWoodSignTexture('SALIDA'), side: THREE.DoubleSide })
+                    );
+                    fallback.position.set(0, signY, 0.035);
+                    fallback.rotation.y = rotateSignForBoat ? Math.PI / 2 : 0;
+                    group.add(fallback);
+                });
 
                 return group;
             }
@@ -3605,26 +3827,23 @@
                 const sign = signGroup?.userData?.exitSign;
                 if (!sign) return;
                 if (active) {
-                    sign.panelMat.emissive.setHex(0x10320e);
-                    sign.panelMat.emissiveIntensity = 0.5;
-                    sign.frameMat.color.setHex(0x9fd46d);
-                    sign.frameMat.emissive.setHex(0x315b24);
-                    sign.frameMat.emissiveIntensity = 0.65;
+                    sign.materials.forEach(material => {
+                        material.emissive.setHex(0x315b24);
+                        material.emissiveIntensity = 0.65;
+                    });
                     sign.glowMat.color.setHex(0x9dff82);
                     sign.glowMat.opacity = 0.36;
                     sign.light.color.setHex(0x9dff82);
                     sign.light.intensity = 1.25;
                     sign.activeUntil = performance.now() + 900;
                 } else {
-                    sign.panelMat.emissive.setHex(0x2a1206);
-                    sign.panelMat.emissiveIntensity = 0.24;
-                    sign.frameMat.color.setHex(0x8b5a2b);
-                    sign.frameMat.emissive.setHex(0x5c300e);
-                    sign.frameMat.emissiveIntensity = 0.25;
+                    sign.materials.forEach(material => {
+                        material.emissiveIntensity = 0.12;
+                    });
                     sign.glowMat.color.setHex(0xffd778);
-                    sign.glowMat.opacity = 0.18;
+                    sign.glowMat.opacity = 0.12;
                     sign.light.color.setHex(0xffd778);
-                    sign.light.intensity = 0.75;
+                    sign.light.intensity = 0.7;
                 }
             }
 
@@ -3712,13 +3931,14 @@
                 this.leverModel = this.createExitPillar();
 
                 if (this.activeTravelToy === 'boat' && this.boatSceneRoot) {
-                    this.leverModel.position.set(0.0, 0.05, -1.72);
+                    this.leverModel.position.set(0.0, 0.05, -1.42);
+                    this.leverModel.rotation.y = Math.PI;
                     this.boatSceneRoot.add(this.leverModel);
                 } else if (this.activeTravelToy === 'train' && this.trainSceneRoot) {
                     this.leverModel.position.set(0.95, 0.0, 0.55);
                     this.trainSceneRoot.add(this.leverModel);
                 } else if (this.activeTravelToy === 'plane') {
-                    this.leverModel.position.set(-1.55, 0.0, -0.2);
+                    this.leverModel.position.set(-1.55, 0.5, 1.45);
                     this.leverModel.rotation.y = Math.PI / 6;
                     (this.planeSceneGroup || this.viajeGroup).add(this.leverModel);
                 } else {
@@ -3728,7 +3948,7 @@
             }
             positionLeverOnPlane() {
                 if (!this.leverModel) return;
-                this.leverModel.position.set(-1.55, 0.0, -0.2);
+                this.leverModel.position.set(-1.55, 0.5, 1.45);
                 this.leverModel.rotation.set(0, Math.PI / 6, 0);
                 this.leverModel.scale.set(1, 1, 1);
             }
@@ -3738,6 +3958,15 @@
                 if (this.leverHandle) {
                     this.leverHandle.rotation.x = -Math.PI / 4;
                 }
+            }
+
+            animateExitLever() {
+                this.leverTargetRotation = -0.72;
+                if (this.leverAnimationTimer) clearTimeout(this.leverAnimationTimer);
+                this.leverAnimationTimer = setTimeout(() => {
+                    this.leverTargetRotation = 0;
+                    this.leverAnimationTimer = null;
+                }, 340);
             }
             createTravelDome(color = 0x101820, opacity = 1, y = 5.2) {
                 const domeGroup = new THREE.Group();
@@ -3905,7 +4134,7 @@
 
                 const whistle = this.createTrainWhistle();
                 whistle.scale.setScalar(2);
-                whistle.position.set(0.95, 0.81, 2.5);
+                whistle.position.set(0.65, 0.81, 2.5);
                 whistle.rotation.y = -Math.PI / 2;
                 this.addTrainObject(whistle, false);
 
@@ -4126,6 +4355,7 @@
                 this.updateTrainSignalLights();
                 this.playLeverClickSound();
                 this.startTrainTravelMusic();
+                this.startTrainParty();
             }
 
             exitTrainToPlatform() {
@@ -4141,6 +4371,7 @@
                 this.updateTrainSignalLights();
                 this.playLeverClickSound();
                 this.stopTrainTravelMusic();
+                this.stopTrainParty();
             }
             addTrainObject(object, movable = false) {
                 this.trainInteractiveObjects.push(object);
@@ -4256,6 +4487,201 @@
                 }
                 this.trainFireflies.geometry.attributes.position.needsUpdate = true;
                 this.trainFireflies.material.opacity = 0.58 + Math.sin(elapsedTime * 2.2) * 0.18;
+            }
+
+            createTrainPartyFrog(phase) {
+                const frog = new THREE.Group();
+                const green = new THREE.MeshStandardMaterial({ color: 0x5f9d4b, roughness: 0.82, flatShading: true });
+                const belly = new THREE.MeshStandardMaterial({ color: 0xb8cf75, roughness: 0.9, flatShading: true });
+                const dark = new THREE.MeshStandardMaterial({ color: 0x182014, roughness: 0.8 });
+                const body = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), green);
+                body.scale.set(1.08, 0.72, 0.92);
+                body.position.y = 0.10;
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.095, 8, 6), green);
+                head.position.set(0, 0.16, 0.075);
+                const chest = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), belly);
+                chest.scale.set(1, 0.65, 0.35);
+                chest.position.set(0, 0.095, 0.105);
+                frog.add(body, head, chest);
+                [-0.045, 0.045].forEach(x => {
+                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.027, 7, 6), belly);
+                    eye.position.set(x, 0.225, 0.115);
+                    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.011, 6, 5), dark);
+                    pupil.position.set(x, 0.226, 0.137);
+                    frog.add(eye, pupil);
+                });
+                [-1, 1].forEach(side => {
+                    const leg = new THREE.Mesh(new THREE.SphereGeometry(0.062, 7, 5), green);
+                    leg.scale.set(1.35, 0.48, 0.75);
+                    leg.position.set(side * 0.105, 0.065, -0.055);
+                    frog.add(leg);
+                });
+                frog.userData = { phase, homeY: 0 };
+                frog.traverse(child => {
+                    if (child.isMesh) child.castShadow = true;
+                });
+                return frog;
+            }
+
+            getTrainPartyDogTemplate(callback) {
+                if (this.trainPartyDogTemplate) {
+                    callback(this.trainPartyDogTemplate);
+                    return;
+                }
+                this.trainPartyDogCallbacks.push(callback);
+                if (this.trainPartyDogLoading) return;
+                this.trainPartyDogLoading = true;
+                const loader = new GLTFLoader();
+                loader.load(modelUrls.perro, (gltf) => {
+                    const dogModel = gltf.scene;
+                    dogModel.traverse(child => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    dogModel.updateMatrixWorld(true);
+                    const rawBox = new THREE.Box3().setFromObject(dogModel);
+                    const rawSize = rawBox.getSize(new THREE.Vector3());
+                    const scale = 0.26 / Math.max(rawSize.x, rawSize.y, rawSize.z, 0.001);
+                    dogModel.scale.multiplyScalar(scale);
+                    dogModel.updateMatrixWorld(true);
+                    const box = new THREE.Box3().setFromObject(dogModel);
+                    const center = box.getCenter(new THREE.Vector3());
+                    dogModel.position.set(-center.x, -box.min.y, -center.z);
+                    this.trainPartyDogTemplate = new THREE.Group();
+                    this.trainPartyDogTemplate.add(dogModel);
+                    this.trainPartyDogLoading = false;
+                    const callbacks = this.trainPartyDogCallbacks.splice(0);
+                    callbacks.forEach(ready => ready(this.trainPartyDogTemplate));
+                }, undefined, () => {
+                    this.trainPartyDogLoading = false;
+                    this.trainPartyDogCallbacks = [];
+                });
+            }
+
+            addTrainPartyDog(party, x, z, phase) {
+                this.getTrainPartyDogTemplate(template => {
+                    if (!party.root.parent || party !== this.trainParty) return;
+                    const dog = SkeletonUtils.clone(template);
+                    dog.position.set(x, 0, z);
+                    dog.rotation.y = x < 0 ? Math.PI / 2 : -Math.PI / 2;
+                    dog.userData = { phase, homeY: 0, partyDog: true };
+                    party.root.add(dog);
+                    party.frogs.push(dog);
+                });
+            }
+
+            startTrainParty() {
+                if (!this.trainSceneRoot) return;
+                if (this.trainParty) {
+                    if (this.trainParty.stopping) {
+                        this.trainParty.stopping = false;
+                        this.trainParty.stopProgress = 0;
+                        this.trainParty.disco.scale.setScalar(1);
+                        this.trainParty.frogs.forEach(frog => { frog.position.y = frog.userData.homeY; });
+                    }
+                    return;
+                }
+                const root = new THREE.Group();
+                root.name = 'fiesta-del-anden';
+                const disco = new THREE.Group();
+                disco.position.set(0, 2.35, 0);
+                const ball = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.19, 16, 12),
+                    new THREE.MeshStandardMaterial({ color: 0xd9e3e6, metalness: 0.92, roughness: 0.14, flatShading: true })
+                );
+                ball.castShadow = true;
+                disco.add(ball);
+                const lights = [0, 1, 2].map(index => {
+                    const light = new THREE.PointLight(0xff4f9a, 1.35, 4.4);
+                    const angle = (index / 3) * Math.PI * 2;
+                    light.position.set(Math.cos(angle) * 0.18, 0, Math.sin(angle) * 0.18);
+                    light.castShadow = false;
+                    disco.add(light);
+                    return light;
+                });
+                root.add(disco);
+
+                const platformLight = new THREE.PointLight(0x6de6ff, 1.15, 4.8);
+                platformLight.position.set(0, 0.72, 0);
+                platformLight.castShadow = false;
+                const platformGlow = new THREE.Mesh(
+                    new THREE.CircleGeometry(0.72, 24),
+                    new THREE.MeshBasicMaterial({ color: 0x6de6ff, transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+                );
+                platformGlow.rotation.x = -Math.PI / 2;
+                platformGlow.position.y = 0.026;
+                root.add(platformLight, platformGlow);
+
+                const dancerPositions = [
+                    [-2.05, -2.75], [-2.05, -1.95], [-2.05, -1.15], [-2.05, -0.35], [-2.05, 0.55], [-2.05, 1.35], [-2.05, 2.15], [-2.05, 2.85],
+                    [2.05, -2.75], [2.05, -1.95], [2.05, -1.15], [2.05, -0.35], [2.05, 0.55], [2.05, 1.35], [2.05, 2.15], [2.05, 2.85]
+                ];
+                const dogSlots = new Set([2, 6, 10, 14]);
+                const frogs = [];
+                this.trainSceneRoot.add(root);
+                const party = { root, disco, ball, lights, platformLight, platformGlow, frogs, stopping: false, stopProgress: 0 };
+                this.trainParty = party;
+                dancerPositions.forEach(([x, z], index) => {
+                    if (dogSlots.has(index)) {
+                        this.addTrainPartyDog(party, x, z, index * 0.77);
+                        return;
+                    }
+                    const frog = this.createTrainPartyFrog(index * 0.77);
+                    frog.position.set(x, 0, z);
+                    frog.rotation.y = x < 0 ? Math.PI / 2 : -Math.PI / 2;
+                    root.add(frog);
+                    frogs.push(frog);
+                });
+            }
+
+            stopTrainParty() {
+                if (!this.trainParty || this.trainParty.stopping) return;
+                this.trainParty.stopping = true;
+                this.trainParty.stopProgress = 0;
+                this.playBubbleSound();
+            }
+
+            animateTrainParty(elapsedTime, delta) {
+                const party = this.trainParty;
+                if (!party) return;
+                if (this.trainBoarded && !party.stopping) {
+                    party.disco.rotation.y += delta * 2.2;
+                    party.ball.rotation.x += delta * 1.35;
+                    party.lights.forEach((light, index) => {
+                        const hue = (elapsedTime * 0.34 + index / 3) % 1;
+                        light.color.setHSL(hue, 0.9, 0.58);
+                        light.intensity = 0.85 + Math.sin(elapsedTime * 7 + index * 2.1) * 0.52;
+                    });
+                    const platformHue = (elapsedTime * 0.22) % 1;
+                    party.platformLight.color.setHSL(platformHue, 0.86, 0.58);
+                    party.platformLight.intensity = 0.85 + Math.sin(elapsedTime * 4.4) * 0.34;
+                    party.platformGlow.material.color.setHSL(platformHue, 0.9, 0.62);
+                    party.platformGlow.material.opacity = 0.13 + Math.sin(elapsedTime * 4.4) * 0.05;
+                    party.frogs.forEach((frog, index) => {
+                        const beat = Math.abs(Math.sin(elapsedTime * 5.8 + frog.userData.phase));
+                        frog.position.y = frog.userData.homeY + 0.025 + beat * 0.15;
+                        frog.rotation.z = Math.sin(elapsedTime * 5.8 + index) * 0.16;
+                        frog.rotation.x = Math.sin(elapsedTime * 3.2 + index) * 0.1;
+                    });
+                    return;
+                }
+
+                party.stopProgress = Math.min(1, party.stopProgress + delta / 0.48);
+                const shrink = 1 - party.stopProgress;
+                party.disco.scale.setScalar(shrink);
+                party.lights.forEach(light => { light.intensity = Math.max(0, light.intensity * shrink); });
+                party.platformLight.intensity = Math.max(0, party.platformLight.intensity * shrink);
+                party.platformGlow.material.opacity = Math.max(0, party.platformGlow.material.opacity * shrink);
+                party.frogs.forEach(frog => {
+                    frog.position.y = THREE.MathUtils.lerp(frog.userData.homeY, -0.25, party.stopProgress);
+                });
+                if (party.stopProgress >= 1) {
+                    party.root.parent?.remove(party.root);
+                    this.disposeSceneResources(party.root);
+                    this.trainParty = null;
+                }
             }
 
             createTrainWhistleTable() {
@@ -4552,8 +4978,9 @@
                 this.viajeGroup.add(puff);
             }
 
-            animateTrainScene(elapsedTime) {
+            animateTrainScene(elapsedTime, delta = 0.016) {
                 this.animateTrainFireflies(elapsedTime);
+                this.animateTrainParty(elapsedTime, delta);
 
                 // Humo SOLO cuando el tren se mueve
                 if (this.trainBoarded && elapsedTime - this.lastTrainSteamTime > 0.28) {
@@ -4781,8 +5208,8 @@
                 if (this.leverModel && this.leverModel.parent !== this.boatSceneRoot) {
                     if (this.leverModel.parent) this.leverModel.parent.remove(this.leverModel);
                     this.boatSceneRoot.add(this.leverModel);
-                    this.leverModel.position.set(0.0, 0.05, -1.72);
-                    this.leverModel.rotation.set(0, 0, 0);
+                    this.leverModel.position.set(0.0, 0.05, -1.42);
+                    this.leverModel.rotation.set(0, Math.PI, 0);
                     this.leverModel.scale.set(1, 1, 1);
                 }
                 this.createBoatCratesAndCandles();
@@ -5489,6 +5916,7 @@
 
             createSkyCoins() {
                 this.skyMovableObjects = [];
+                this.skyCoinRespawnSession = (this.skyCoinRespawnSession || 0) + 1;
                 const positions = [
                     [-1.25, 1.05, 0.75],
                     [1.05, 1.05, 0.55],
@@ -5501,6 +5929,8 @@
                     const coin = this.createSkyCoin();
                     coin.position.set(pos[0], pos[1], pos[2]);
                     coin.userData.phase = index * Math.PI * 0.4;
+                    coin.userData.respawnableSkyCoin = true;
+                    coin.userData.respawnSession = this.skyCoinRespawnSession;
                     this.skyCoins.push(coin);
                     this.skyMovableObjects.push(coin);
                     (this.planeSceneGroup || this.viajeGroup).add(coin);
@@ -5530,6 +5960,8 @@
                     trayDropPoint.z
                 );
                 coin.userData.type = 'skyCoinPhysics';
+                coin.userData.respawnableSkyCoin = true;
+                coin.userData.respawnSession = this.skyCoinRespawnSession;
                 this.skyCoins.push(coin);
                 this.skyMovableObjects.push(coin);
                 (this.planeSceneGroup || this.viajeGroup).add(coin);
@@ -5555,6 +5987,7 @@
                     if (coinHit.length > 0) {
                         const coin = this.findInteractiveParent(coinHit[0].object, this.skyMovableObjects);
                         if (coin) {
+                            this.scheduleSkyCoinRespawn(coin);
                             this.selectedSkyObject = coin;
                             const currentY = this.selectedSkyObject.position.y;
                             this.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, currentY, 0));
@@ -5649,6 +6082,41 @@
                 coin.userData.restY = 1.05;
                 coin.userData.falling = true;
                 coin.userData.fallSpeed = 0.035 + Math.random() * 0.02;
+            }
+
+            scheduleSkyCoinRespawn(coin) {
+                if (!coin?.userData?.respawnableSkyCoin || coin.userData.respawnScheduled) return;
+
+                coin.userData.respawnScheduled = true;
+                const session = coin.userData.respawnSession;
+
+                setTimeout(() => {
+                    if (
+                        this.currentSceneState !== 'viaje' ||
+                        this.activeTravelToy !== 'plane' ||
+                        session !== this.skyCoinRespawnSession
+                    ) return;
+
+                    const replacement = this.createSkyCoin();
+                    replacement.userData.respawnableSkyCoin = true;
+                    replacement.userData.respawnSession = session;
+                    this.respawnCoinFromSky(replacement);
+
+                    this.skyCoins.push(replacement);
+                    this.skyMovableObjects.push(replacement);
+                    (this.planeSceneGroup || this.viajeGroup).add(replacement);
+                    this.registerPhysicsObject(
+                        replacement,
+                        1.05 + (this.planeSceneGroup?.position.y || 0)
+                    );
+
+                    const physics = this.physicsObjects.find(item => item.mesh === replacement);
+                    if (physics) {
+                        physics.velocity.set(0, 0, 0);
+                        physics.resting = false;
+                        physics.onGround = false;
+                    }
+                }, 15000);
             }
 
             dispenseCloud() {
@@ -6048,6 +6516,7 @@
 
                     this.currentSceneState = 'taller';
                     this.updateXRToyMenuVisibility();
+                    this.resetWorkshopSpawn();
                     this.transitionTriggered = false;
                     this.activeTravelToy = null;
                     this.activeSceneConfig = null;
@@ -6069,6 +6538,7 @@
                 this.updatePreviewHeldObjects();
                 this.updateXRControllerMotion(delta);
                 this.updatePhysics(delta);
+                this.updateTruckLaunches(delta);
                 this.updateXRControllerInteraction();
 
                 if (this.currentSceneState === 'viaje') {
@@ -6192,7 +6662,7 @@
                     this.animateBirds(elapsedTime);
 
                     if (this.activeTravelToy === 'train') {
-                        this.animateTrainScene(elapsedTime);
+                        this.animateTrainScene(elapsedTime, delta);
                     }
 
                     // Efecto titileo de luz de camarote
@@ -6533,25 +7003,28 @@
             }
 
             startTrainTravelMusic() {
-                if (this.sceneAudio?.mode !== 'train' || this.sceneAudio.trainMusicTimer) return;
-                const notes = [196.0, 246.94, 293.66, 246.94, 220.0, 261.63, 329.63, 293.66];
-                const playStep = () => {
-                    const note = notes[this.sceneAudio.trainMusicStep % notes.length];
-                    this.playSceneTone(note, 0.23, 0.034, 'triangle');
-                    if (this.sceneAudio.trainMusicStep % 2 === 0) {
-                        this.playSceneTone(note / 2, 0.13, 0.016, 'sine');
-                    }
-                    this.sceneAudio.trainMusicStep++;
-                };
-                this.sceneAudio.trainMusicStep = 0;
-                playStep();
-                this.sceneAudio.trainMusicTimer = setInterval(playStep, 285);
+                if (this.sceneAudio?.mode !== 'train' || this.sceneAudio.trainMusicElement) return;
+                this.sceneAudio.trainMusicElement = this.playSceneMedia(
+                    'https://raw.githubusercontent.com/Joo0o0oo/Assets-juguetes-imposibles/main/Pitbull%20-%20Fireball%20%28Audio%29%20ft.%20John%20Ryan%20-%20PitbullVEVO%20%281%29.mp3',
+                    { loop: true, volume: 0.16 }
+                );
             }
 
             stopTrainTravelMusic() {
-                if (!this.sceneAudio?.trainMusicTimer) return;
-                clearInterval(this.sceneAudio.trainMusicTimer);
-                this.sceneAudio.trainMusicTimer = null;
+                if (!this.sceneAudio) return;
+                if (this.sceneAudio.trainMusicTimer) {
+                    clearInterval(this.sceneAudio.trainMusicTimer);
+                    this.sceneAudio.trainMusicTimer = null;
+                }
+                const audio = this.sceneAudio.trainMusicElement;
+                if (audio) {
+                    try {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    } catch (e) {}
+                    this.sceneAudio.mediaElements = this.sceneAudio.mediaElements.filter(item => item !== audio);
+                    this.sceneAudio.trainMusicElement = null;
+                }
                 this.sceneAudio.trainMusicStep = 0;
             }
 
@@ -6695,6 +7168,52 @@
                     osc1.stop(now + 1.9);
                     osc2.stop(now + 1.9);
                 } catch(e){}
+            }
+
+            playTruckHonkSound() {
+                try {
+                    const ctx = this.getAudioContext();
+                    const now = ctx.currentTime;
+                    const gain = ctx.createGain();
+                    const low = ctx.createOscillator();
+                    const high = ctx.createOscillator();
+                    low.type = 'sawtooth';
+                    high.type = 'square';
+                    low.frequency.setValueAtTime(178, now);
+                    high.frequency.setValueAtTime(236, now);
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.linearRampToValueAtTime(0.11, now + 0.035);
+                    gain.gain.setValueAtTime(0.11, now + 0.32);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.52);
+                    low.connect(gain);
+                    high.connect(gain);
+                    gain.connect(ctx.destination);
+                    low.start(now);
+                    high.start(now);
+                    low.stop(now + 0.54);
+                    high.stop(now + 0.54);
+                } catch (e) {}
+            }
+
+            playBubbleSound() {
+                try {
+                    const ctx = this.getAudioContext();
+                    const now = ctx.currentTime;
+                    [0, 0.09, 0.18].forEach((offset, index) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(180 + index * 55, now + offset);
+                        osc.frequency.exponentialRampToValueAtTime(82 + index * 18, now + offset + 0.16);
+                        gain.gain.setValueAtTime(0.0001, now + offset);
+                        gain.gain.linearRampToValueAtTime(0.07, now + offset + 0.02);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.19);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(now + offset);
+                        osc.stop(now + offset + 0.2);
+                    });
+                } catch (e) {}
             }
 
             playLeverClickSound() {
